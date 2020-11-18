@@ -1009,9 +1009,10 @@ int main(int argc, char **argv) {
       continue;
     } else if(!strcmp(argv[i], "-m")) {
       ls.minimize = 1;
+      ls.onlypy = ls.unpy = 0;
       continue;
     } else if(!strcmp(argv[i], "-c")) {
-      ls.color = 1;
+      ls.color = !ls.color;
       continue;
     }
     FILE* file = fopen(argv[i], "r");
