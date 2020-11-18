@@ -1,3 +1,6 @@
+PREFIX ?= /usr/local
+PRG := gwion-fmt
+
 # Warnings
 CFLAGS += -Wall -Wextra -Wno-unused
 
@@ -10,8 +13,16 @@ CFLAGS += -flto -Ofast
 LDFLAGS += -flto
 
 all: src/lint.c src/unpy.c
-#	${CC} ${CFLAGS} ${LDFLAGS} $? -I ~/src/git/Gwion/include -I/home/djay/src/git/Gwion/util/include -I/home/djay/src/git/Gwion/ast/include -lpthread -lgwion_ast -lgwion_util -lm -o gwion-lint
-	${CC} ${CFLAGS} ${LDFLAGS} $? -I/usr/local/include/gwion/util -Iinclude -lpthread -lgwion_ast -lgwion_util -lm -o gwion-lint
+	${CC} ${CFLAGS} ${LDFLAGS} $? -Iinclude -lpthread -lgwion_ast -lgwion_util -lm -o ${PRG}
 
 src/unpy.c:
 	${LEX} src/unpy.l
+
+clean:
+	rm -rf src/*.o ${PRG}
+
+install: all
+	install ${PRG} ${PREFIX}/bin
+
+uninstall:
+	rm ${PREFIX}/bin/${PRG}
