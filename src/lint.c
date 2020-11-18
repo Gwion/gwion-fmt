@@ -990,9 +990,9 @@ ANN static void lint_unpy(struct AstGetter_ *arg, struct LintState *ls) {
 int main(int argc, char **argv) {
   MemPool mp = mempool_ini(sizeof(struct Exp_));
   SymTable* st = new_symbol_table(mp, 65347); // could be smaller
-  struct PPArg_ ppa = { .lint = 1};
+  struct PPArg_ ppa = { .lint = 1 };
   pparg_ini(mp, &ppa);
-  struct LintState ls = {};
+  struct LintState ls = { .color=isatty(1) };
 
   for(int i = 1; i < argc; ++i) {
     if(!strcmp(argv[i], "-p")) {

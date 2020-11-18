@@ -16,6 +16,4 @@ A simple utility to clenly format Gwion code.
 
 The preprocessor might lead to some problems for now.
 
-Color mode should be on by default if in an interactive terminal.
-
 Add usage `-h`
