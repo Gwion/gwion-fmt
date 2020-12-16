@@ -198,9 +198,9 @@ Arg_List
   Var_Decl
   ?Arg_List next
 
-Decl_List
-  Exp self
-  ?Decl_List next
+Union_List
+  Type_Decl* td
+  Symbol xid
 
 ### Section
 :
@@ -228,7 +228,7 @@ Enum_Def
   ?Symbol xid
 
 Union_Def
-  Decl_List l
+  Union_List l
   ?Symbol xid
   ?Symbol type_xid
   ?Tmpl*

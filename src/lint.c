@@ -225,14 +225,6 @@ ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
     lint(a, "const");
     lint_space(a);
   }
-  if(GET_FLAG(b, nonnull)) {
-    lint(a, "nonnull");
-    lint_space(a);
-  }
-  if(GET_FLAG(b, ref)) {
-    lint(a, "ref");
-    lint_space(a);
-  }
   COLOR(a, "\033[0m");
   lint_flag(a, b);
   COLOR(a, "\033[31m")
@@ -243,6 +235,8 @@ ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
   COLOR(a, "\033[0m")
   if(b->exp)
     lint_exp(a, b->exp);
+  for(m_uint i = 0; i < b->option; ++i)
+    lint(a, "?");
   if(b->array)
     lint_array_sub2(a, b->array);
   if(b->next) {
@@ -326,7 +320,7 @@ ANN static void lint_var_decl_list(Lint *a, Var_Decl_List b) {
 
 ANN static void lint_exp_decl(Lint *a, Exp_Decl *b) {
   if(b->td) {
-    if(!(GET_FLAG(b->td, const) || GET_FLAG(b->td, nonnull) || GET_FLAG(b->td, ref))) {
+    if(!(GET_FLAG(b->td, const) || GET_FLAG(b->td, late))) {
       COLOR(a, "\33[32;1m")
       lint(a, "var");
       COLOR(a, "\33[0m")
@@ -465,6 +459,11 @@ ANN static void lint_exp_lambda(Lint *a, Exp_Lambda *b) {
   }
   if(b->def->d.code)
     lint_stmt_code(a, &b->def->d.code->d.stmt_code);
+}
+
+ANN static void lint_exp_td(Lint *a, Type_Decl *b) {
+  lint(a, "$");
+  lint_type_decl(a, b);
 }
 
 DECL_EXP_FUNC(lint, void, Lint*)
@@ -784,18 +783,14 @@ ANN static void lint_arg_list(Lint *a, Arg_List b) {
   NEXT(a, b, lint_arg_list);
 }
 
-ANN static void lint_decl_list(Lint *a, Decl_List b) {
+ANN static void lint_union_list(Lint *a, Union_List b) {
   lint_indent(a);
-  UNSET_FLAG(b->self->d.exp_decl.td, ref);
-  UNSET_FLAG(b->self->d.exp_decl.td, const);
-  UNSET_FLAG(b->self->d.exp_decl.td, nonnull);
-  lint_type_decl(a, b->self->d.exp_decl.td);
-  lint_var_decl(a, b->self->d.exp_decl.list->self);
-//  lint_exp(a, b->self);
+  lint_type_decl(a, b->td);
+  lint_symbol(a, b->xid);
   lint_sc(a);
   lint_nl(a);
   if(b->next)
-    lint_decl_list(a, b->next);
+    lint_union_list(a, b->next);
 }
 
 ANN static inline int isnl(Stmt b) {
@@ -897,20 +892,14 @@ ANN static void lint_union_def(Lint *a, Union_Def b) {
   lint(a, "union");
   lint_space(a);
   lint_flag(a, b);
-  if(b->type_xid) {
-    lint_symbol(a, b->type_xid);
-    lint_space(a);
-  }
+  lint_symbol(a, b->xid);
+  lint_space(a);
   if(b->tmpl)
     lint_tmpl(a, b->tmpl);
   lint_lbrace(a);
   lint_nl(a);
-  INDENT(a, lint_decl_list(a, b->l))
+  INDENT(a, lint_union_list(a, b->l))
   lint_rbrace(a);
-  if(b->xid) {
-    lint_space(a);
-    lint_symbol(a, b->xid);
-  }
   lint_sc(a);
   check_pos(a, &b->pos->last);
 }
