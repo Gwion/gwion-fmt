@@ -233,8 +233,6 @@ ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
   if(b->types)
     lint_type_list(a, b->types);
   COLOR(a, "\033[0m")
-  if(b->exp)
-    lint_exp(a, b->exp);
   for(m_uint i = 0; i < b->option; ++i)
     lint(a, "?");
   if(b->array)
@@ -251,8 +249,8 @@ ANN static void lint_prim_id(Lint *a, Symbol *b) {
   lint_symbol(a, *b);
 }
 
-ANN static void lint_prim_num(Lint *a, m_uint *b) {
-  lint(a, "%"UINT_F, *b);
+ANN static void lint_prim_num(Lint *a, m_int *b) {
+  lint(a, "%"INT_F, *b);
 }
 
 ANN static void lint_prim_float(Lint *a, m_float *b) {
@@ -331,6 +329,12 @@ ANN static void lint_exp_decl(Lint *a, Exp_Decl *b) {
   lint_var_decl_list(a, b->list);
 }
 
+ANN static void lint_exp_td(Lint *a, Type_Decl *b) {
+  lint(a, "$");
+  lint_space(a);
+  lint_type_decl(a, b);
+}
+
 ANN static void lint_op(Lint *a, const Symbol b) {
   char *str = s_name(b), c;
   while((c = *str)) {
@@ -371,11 +375,12 @@ ANN static void lint_exp_unary(Lint *a, Exp_Unary *b) {
     lint(a, ")");
   if(!isop(b->op))
     lint_space(a);
-  if(b->exp)
+  if(b->unary_type == unary_exp)
     lint_exp(a, b->exp);
-  if(b->td)
+  else 
+if(b->unary_type == unary_td)
     lint_type_decl(a, b->td);
-  if(b->code)
+  else if(b->unary_type == unary_code)
     lint_stmt_code(a, &b->code->d.stmt_code);
 }
 
@@ -459,11 +464,6 @@ ANN static void lint_exp_lambda(Lint *a, Exp_Lambda *b) {
   }
   if(b->def->d.code)
     lint_stmt_code(a, &b->def->d.code->d.stmt_code);
-}
-
-ANN static void lint_exp_td(Lint *a, Type_Decl *b) {
-  lint(a, "$");
-  lint_type_decl(a, b);
 }
 
 DECL_EXP_FUNC(lint, void, Lint*)
@@ -654,7 +654,8 @@ ANN static void lint_stmt_if(Lint *a, Stmt_If b) {
 ANN static void lint_stmt_code(Lint *a, Stmt_Code b) {
   lint_lbrace(a);
   if(b->stmt_list) {
-    INDENT(a, lint_nl(a); lint_stmt_list(a, b->stmt_list))
+    INDENT(a, lint_nl(a);
+    lint_stmt_list(a, b->stmt_list))
     lint_indent(a);
   }
   lint_rbrace(a);
@@ -673,16 +674,24 @@ ANN static void lint_stmt_varloop(Lint *a, Stmt_VarLoop b) {
     lint_stmt_code(a, &b->body->d.stmt_code);
 }
 
-ANN static void lint_stmt_break(Lint *a, Stmt_Exp b) {
+ANN static void lint_stmt_break(Lint *a, Stmt_Index b) {
   COLOR(a, "\033[34m")
   lint(a, "break");
   COLOR(a, "\033[0m")
+  if(b->idx) {
+    lint_space(a);
+    lint_prim_num(a, &b->idx);
+  }
   lint_sc(a);
 }
 
-ANN static void lint_stmt_continue(Lint *a, Stmt_Exp b) {
+ANN static void lint_stmt_continue(Lint *a, Stmt_Index b) {
   COLOR(a, "\033[34m")
   lint(a, "continue");
+  if(b->idx) {
+    lint_space(a);
+    lint_prim_num(a, &b->idx);
+  }
   COLOR(a, "\033[0m")
   lint_sc(a);
 }
@@ -754,24 +763,22 @@ ANN static void lint_stmt_case(Lint *a, Stmt_Match b) {
   }
 }
 
-ANN static void lint_stmt_jump(Lint *a, Stmt_Jump b) {
-}
-
 static const char *pp[] = {
-  "!", "include", "define", "pragma", "undef", "ifdef", "ifndef", "else", "endif"
+  "!", "include", "define", "pragma", "undef", "ifdef", "ifndef", "else", "endif",
 };
 
 ANN static void lint_stmt_pp(Lint *a, Stmt_PP b) {
   COLOR(a, "\033[34;3m")
-  if(b->pp_type != ae_pp_nl)
-    lint(a, "#%s %s", pp[b->pp_type], b->data ?: "");
+//  if(b->pp_type != ae_pp_nl)
+//    lint(a, "#%s %s", pp[b->pp_type], b->data ?: "");
   COLOR(a, "\033[0m")
 }
 
 ANN static void lint_stmt(Lint *a, Stmt b) {
   check_pos(a, &b->pos->first);
   lint_indent(a);
-  lint_stmt_func[b->stmt_type](a, &b->d);
+  if(b->stmt_type <= ae_stmt_pp)
+    lint_stmt_func[b->stmt_type](a, &b->d);
   lint_nl(a);
   check_pos(a, &b->pos->last);
 }
