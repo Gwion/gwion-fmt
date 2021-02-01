@@ -17,7 +17,7 @@ jobs:
     - name: Gwion
       run: |
         git clone https://github.com/Gwion/Gwion
-        cd gwion
+        cd Gwion
         git submodule update --init
         make
         sudo make install
