@@ -22,4 +22,4 @@ jobs:
         make
         
     - name: make
-      run: CFLAGS=-IGwion/include -IGwion/ast/include -IGwion/util/include -LGwion -LGwion/ast -LGwion/util
+      run: CFLAGS=-IGwion/include -IGwion/ast/include -IGwion/util/include -LGwion -LGwion/ast -LGwion/util make
