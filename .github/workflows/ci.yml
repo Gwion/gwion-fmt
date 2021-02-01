@@ -20,7 +20,6 @@ jobs:
         cd Gwion
         git submodule update --init
         make
-        sudo make install
         
     - name: make
-      run: make
+      run: CFLAGS=-IGwion/include -IGwion/ast/include -IGwion/util/include -LGwion -LGwion/ast -LGwion/util
