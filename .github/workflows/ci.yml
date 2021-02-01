@@ -1,0 +1,26 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Gwion
+      run: |
+        git clone https://github.com/Gwion/Gwion
+        cd gwion
+        git submodule update --init
+        make
+        sudo make install
+        
+    - name: make
+      run: make
