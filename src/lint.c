@@ -774,6 +774,16 @@ ANN static void lint_stmt_pp(Lint *a, Stmt_PP b) {
   COLOR(a, "\033[0m")
 }
 
+ANN static void lint_stmt_defer(Lint *a, Stmt_Defer b) {
+  COLOR(a, "\033[34;3m")
+  lint(a, "defer");
+  COLOR(a, "\033[0m")
+  lint_space(a);
+  lint_stmt(a, b->stmt);
+//  if(b->pp_type != ae_pp_nl)
+//    lint(a, "#%s %s", pp[b->pp_type], b->data ?: "");
+}
+
 ANN static void lint_stmt(Lint *a, Stmt b) {
   check_pos(a, &b->pos->first);
   lint_indent(a);

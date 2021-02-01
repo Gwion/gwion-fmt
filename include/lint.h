@@ -69,6 +69,7 @@ ANN static void lint_case_list(Lint *a, Stmt_List b);
 ANN static void lint_stmt_match(Lint *a, Stmt_Match b);
 ANN static void lint_stmt_case(Lint *a, Stmt_Match b);
 ANN static void lint_stmt_pp(Lint *a, Stmt_PP b);
+ANN static void lint_stmt_defer(Lint *a, Stmt_Defer b);
 ANN static void lint_stmt(Lint *a, Stmt b);
 ANN static void lint_arg_list(Lint *a, Arg_List b);
 ANN static void lint_union_list(Lint *a, Union_List b);
