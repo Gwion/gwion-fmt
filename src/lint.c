@@ -228,6 +228,8 @@ ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
   COLOR(a, "\033[0m");
   lint_flag(a, b);
   COLOR(a, "\033[31m")
+  if(b->ref)
+    lint(a, "?");
   if(b->xid)
     lint_symbol(a, b->xid);
   if(b->types)
