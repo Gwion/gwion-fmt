@@ -14,6 +14,7 @@
 
 #define check_pos(a,b)
 
+#define printf tcol_printf
 
 ANN static enum char_type cht(const char c) {
   if(isalnum(c) || c == '_')
@@ -68,7 +69,7 @@ ANN static void lint_nl(Lint *a) {
 
 ANN static void lint_lbrace(Lint *a) {
   if(!a->ls->py)
-    lint(a, "{");
+    lint(a, "{{");
 }
 
 ANN static void lint_rbrace(Lint *a) {
@@ -124,7 +125,7 @@ ANN static void lint_prim_interp(Lint *a, Exp *b);
 #define _FLAG(a, b) (((a) & ae_flag_##b) == (ae_flag_##b))
 ANN static void lint_flag(Lint *a, ae_flag b) {
   int state = 0;
-  COLOR(a, "\033[32;2m");
+  COLOR(a, "{G}");
   if(_FLAG(b, private) && (state = 1))
     lint(a, "private");
   else if(_FLAG(b, protect) && (state = 1))
@@ -132,21 +133,21 @@ ANN static void lint_flag(Lint *a, ae_flag b) {
   if(state)
     lint_space(a);
   state = 0;
-  COLOR(a, "\033[32;3m");
+  COLOR(a, "{-G}");
   if(_FLAG(b, static) && (state = 1))
     lint(a, "static");
   else if(_FLAG(b, global) && (state = 1))
     lint(a, "global");
-  COLOR(a, "\033[0m");
+  COLOR(a, "{0}");
   if(state)
     lint_space(a);
   state = 0;
-  COLOR(a, "\033[32;4m");
+  COLOR(a, "{-G}");
   if(_FLAG(b, abstract) && (state = 1))
     lint(a, "abstract");
   else if(_FLAG(b, final) && (state = 1))
     lint(a, "final");
-  COLOR(a, "\033[0m");
+  COLOR(a, "{0}");
   if(state)
     lint_space(a);
 }
@@ -220,21 +221,21 @@ ANN static void lint_range(Lint *a, Range *b) {
 
 ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
   check_pos(a, &b->pos->first);
-  COLOR(a, "\33[32;1m")
+  COLOR(a, "{+G}")
   if(GET_FLAG(b, const)) {
     lint(a, "const");
     lint_space(a);
   }
-  COLOR(a, "\033[0m");
+  COLOR(a, "{0}");
   lint_flag(a, b);
-  COLOR(a, "\033[31m")
+  COLOR(a, "{R}")
   if(b->ref)
     lint(a, "?");
   if(b->xid)
     lint_symbol(a, b->xid);
   if(b->types)
     lint_type_list(a, b->types);
-  COLOR(a, "\033[0m")
+  COLOR(a, "{0}")
   for(m_uint i = 0; i < b->option; ++i)
     lint(a, "?");
   if(b->array)
@@ -252,18 +253,18 @@ ANN static void lint_prim_id(Lint *a, Symbol *b) {
 }
 
 ANN static void lint_prim_num(Lint *a, m_int *b) {
-  lint(a, "%"INT_F, *b);
+  lint(a, "{M}%" INT_F "{0}", *b);
 }
 
 ANN static void lint_prim_float(Lint *a, m_float *b) {
   if(*b == floor(*b))
-    lint(a, "%li.", (m_int)*b);
+    lint(a, "{M}%li.{0}", (m_int)*b);
   else
-    lint(a, "%g", *b);
+    lint(a, "{M}%g{0}", *b);
 }
 
 ANN static void lint_prim_str(Lint *a, m_str *b) {
-  lint(a, "\"%s\"", *b);
+  lint(a, "{/+Y}\"%s\"{0}", *b);
 }
 
 ANN static void lint_prim_array(Lint *a, Array_Sub *b) {
@@ -283,16 +284,12 @@ ANN static void lint_prim_hack(Lint *a, Exp *b) {
 }
 
 ANN static void lint_prim_typeof(Lint *a, Exp *b) {
-  COLOR(a, "\033[33m")
-  lint(a, "typeof");
-  COLOR(a, "\033[0m")
+  lint(a, "{+C}typeof{0}");
   paren_exp(a, *b);
 }
 
 ANN static void lint_prim_char(Lint *a, m_str *b) {
-  COLOR(a, "\033[35;1m")
-  lint(a, "'%s'", *b);
-  COLOR(a, "\033[0m")
+  lint(a, "{M}'%s'{0}", *b);
 }
 
 ANN static void lint_prim_nil(Lint *a, void *b) {
@@ -321,9 +318,7 @@ ANN static void lint_var_decl_list(Lint *a, Var_Decl_List b) {
 ANN static void lint_exp_decl(Lint *a, Exp_Decl *b) {
   if(b->td) {
     if(!(GET_FLAG(b->td, const) || GET_FLAG(b->td, late))) {
-      COLOR(a, "\33[32;1m")
-      lint(a, "var");
-      COLOR(a, "\33[0m")
+      lint(a, "{+G}var{0}");
       lint_space(a);
     }
     lint_type_decl(a, b->td);
@@ -379,8 +374,7 @@ ANN static void lint_exp_unary(Lint *a, Exp_Unary *b) {
     lint_space(a);
   if(b->unary_type == unary_exp)
     lint_exp(a, b->exp);
-  else 
-if(b->unary_type == unary_td)
+  else if(b->unary_type == unary_td)
     lint_type_decl(a, b->td);
   else if(b->unary_type == unary_code)
     lint_stmt_code(a, &b->code->d.stmt_code);
@@ -477,27 +471,23 @@ ANN static void lint_exp(Lint *a, Exp b) {
 }
 
 ANN static void lint_prim_interp(Lint *a, Exp *b) {
-  COLOR(a, "\033[37m")
-  lint(a, "\"");
+  lint(a, "{/Y}\"");
   Exp e = *b;
   while(e) {
     if(e->exp_type == ae_exp_primary && e->d.prim.prim_type == ae_prim_str) {
       lint(a, e->d.prim.d.str);
     } else {
-      COLOR(a, "\033[0m")
-      lint(a, "${"); // do not use rbace
+      lint(a, "{0}${{"); // do not use rbace
       lint_space(a);
       check_pos(a, &e->pos->first);
       lint_exp_func[e->exp_type](a, &e->d);
       check_pos(a, &e->pos->last);
       lint_space(a);
-      lint(a, "}");
-      COLOR(a, "\033[37m")
+      lint(a, "}{/Y}");
     }
     e = e->next;
   }
-  lint(a, "\"");
-  COLOR(a, "\033[0m")
+  lint(a, "\"{0}");
 }
 
 ANN static void lint_array_sub2(Lint *a, Array_Sub b) {
@@ -536,22 +526,15 @@ ANN static void lint_stmt_exp(Lint *a, Stmt_Exp b) {
 DECL_STMT_FUNC(lint, void, Lint*)
 ANN static void lint_stmt_while(Lint *a, Stmt_Flow b) {
   if(!b->is_do) {
-    COLOR(a, "\033[37m")
-    lint(a, "while");
-    COLOR(a, "\033[0m")
+    lint(a, "{M}while{0}");
     paren_exp(a, b->cond);
-  } else {
-    COLOR(a, "\033[37m")
-    lint(a, "do");
-    COLOR(a, "\033[0m")
-  }
+  } else
+    lint(a, "{M}do{0}");
   lint_space(a);
   lint_stmt_func[b->body->stmt_type](a, &b->body->d);
   if(b->is_do) {
     lint_space(a);
-    COLOR(a, "\033[37m")
-    lint(a, "while");
-    COLOR(a, "\033[0m")
+    lint(a, "{M}while{0}");
     paren_exp(a, b->cond);
     lint_sc(a);
   }
@@ -559,32 +542,22 @@ ANN static void lint_stmt_while(Lint *a, Stmt_Flow b) {
 
 ANN static void lint_stmt_until(Lint *a, Stmt_Flow b) {
   if(!b->is_do) {
-    COLOR(a, "\033[37m")
-    lint(a, "until");
-    COLOR(a, "\033[0m")
+    lint(a, "{M}until{0}");
     paren_exp(a, b->cond);
-  } else {
-    COLOR(a, "\033[37m")
-    lint(a, "do");
-    COLOR(a, "\033[0m")
-  }
+  } else
+    lint(a, "{M}do{0}");
   lint_space(a);
   lint_stmt_func[b->body->stmt_type](a, &b->body->d);
   if(b->is_do) {
     lint_space(a);
-    COLOR(a, "\033[37m")
-    lint(a, "until");
-    COLOR(a, "\033[0m")
+    lint(a, "{M}until{0}");
     paren_exp(a, b->cond);
     lint_sc(a);
   }
 }
 
 ANN static void lint_stmt_for(Lint *a, Stmt_For b) {
-  COLOR(a, "\033[37m")
-  lint(a, "for");
-  COLOR(a, "\033[0m")
-  lint(a, "(");
+  lint(a, "{M}for{0}(");
   lint_stmt_exp(a, &b->c1->d.stmt_exp);
   lint_space(a);
   const unsigned int py = a->ls->py;
@@ -600,10 +573,7 @@ ANN static void lint_stmt_for(Lint *a, Stmt_For b) {
 }
 
 ANN static void lint_stmt_each(Lint *a, Stmt_Each b) {
-  COLOR(a, "\033[37m")
-  lint(a, "foreach");
-  COLOR(a, "\033[0m")
-  lint(a, "(");
+  lint(a, "{M}foreach{0}(");
   lint_symbol(a, b->sym);
   lint_space(a);
   lint(a, ":");
@@ -616,9 +586,7 @@ ANN static void lint_stmt_each(Lint *a, Stmt_Each b) {
 }
 
 ANN static void lint_stmt_loop(Lint *a, Stmt_Loop b) {
-  COLOR(a, "\033[37m")
-  lint(a, "repeat");
-  COLOR(a, "\033[0m")
+  lint(a, "{M}repeat{0}");
   paren_exp(a, b->cond);
   lint_stmt(a, b->body);
 }
@@ -637,17 +605,13 @@ ANN static void lint_code(Lint *a, Stmt b) {
 }
 
 ANN static void lint_stmt_if(Lint *a, Stmt_If b) {
-  COLOR(a, "\033[37m")
-  lint(a, "if");
-  COLOR(a, "\033[0m")
+  lint(a, "{M}if{0}");
   paren_exp(a, b->cond);
   lint_code(a, b->if_body);
   if(b->else_body) {
     lint_nl(a);
     lint_indent(a);
-    COLOR(a, "\033[37m")
-    lint(a, "else");
-    COLOR(a, "\033[0m")
+    lint(a, "{M}else{0}");
     lint_code(a, b->else_body);
   }
 }
@@ -827,7 +791,9 @@ ANN static void lint_stmt_list(Lint *a, Stmt_List b) {
 ANN static void lint_func_base(Lint *a, Func_Base *b) {
   lint_flag(a, b);
   if(fbflag(b, fbflag_unary)) {
+    lint(a, "{+M}");
     lint_op(a, b->xid);
+    lint(a, "{0}");
     lint_space(a);
     if(b->tmpl)
       lint_tmpl(a, b->tmpl);
@@ -835,7 +801,9 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
   if(b->td)
     lint_type_decl(a, b->td);
   if(!fbflag(b, fbflag_unary)) {
+    lint(a, "{+M}");
     lint_symbol(a, b->xid);
+    lint(a, "{0}");
     if(b->tmpl)
       lint_tmpl(a, b->tmpl);
   }
@@ -855,9 +823,9 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
 ANN static void lint_func_def(Lint *a, Func_Def b) {
   check_pos(a, &b->pos->first);
   if(!fbflag(b->base, fbflag_op))
-    lint(a, "fun");
+    lint(a, "{+C}fun{0}");
   else
-    lint(a, "operator");
+    lint(a, "{+C}operator{0}");
   lint_space(a);
   lint_func_base(a, b->base);
   lint_space(a);
@@ -868,15 +836,17 @@ ANN static void lint_func_def(Lint *a, Func_Def b) {
 
 ANN static void lint_class_def(Lint *a, Class_Def b) {
   check_pos(a, &b->pos->first);
-  lint(a, "class");
+  lint(a, "{+C}class{0}");
   lint_space(a);
   lint_flag(a, b);
+  lint(a, "{+G}");
   lint_symbol(a, b->base.xid);
+  lint(a, "{0}");
   if(b->base.tmpl)
     lint_tmpl(a, b->base.tmpl);
   lint_space(a);
   if(b->base.ext) {
-    lint(a, "extends");
+    lint(a, "{+/C}extends{0}");
     lint_space(a);
     lint_type_decl(a, b->base.ext);
   }

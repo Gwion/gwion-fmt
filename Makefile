@@ -7,13 +7,16 @@ CFLAGS += -Wall -Wextra -Wno-unused
 # Includes
 CFLAGS += -I/usr/local/include/gwion/util
 CFLAGS += -I/usr/local/include/gwion/ast
+CFLAGS += -I/usr/local/include/libtermcolor
 CFLAGS += -Iinclude
 
-CFLAGS += -flto -Ofast
-LDFLAGS += -flto
+#CFLAGS += -flto -Ofast
+#LDFLAGS += -flto
+
+LDFLAGS += -static -lprettyerr -ltermcolor
 
 all: src/lint.c src/unpy.c
-	${CC} ${CFLAGS} ${LDFLAGS} $? -Iinclude -lpthread -lgwion_ast -lgwion_util -lm -o ${PRG}
+	${CC} ${CFLAGS} $? -Iinclude -lgwion_ast -lgwion_util ${LDFLAGS} -lpthread -lm -o ${PRG}
 
 src/unpy.c:
 	${LEX} src/unpy.l
