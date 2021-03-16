@@ -21,4 +21,4 @@ jobs:
         make
         
     - name: make
-      run: CFLAGS="-IGwion/include -IGwion/ast/include -IGwion/util/include -LGwion -LGwion/ast -LGwion/util" make
+      run: CFLAGS="-IGwion/include -IGwion/ast/include -IGwion/ast/libprettyerr/src -IGwion/util/libtermcolor/src -IGwion/util/include -LGwion -LGwion/ast -LGwion/util -LGwion/ast/libprettyerr -LGwion/util/libtermcolor" make
