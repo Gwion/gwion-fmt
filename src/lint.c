@@ -917,6 +917,18 @@ ANN static void lint_type_def(Lint *a, Type_Def b) {
 //  check_pos(a, &b->pos->last);
 }
 
+ANN static void lint_extend(Lint *a, Class_Def b) {
+//  check_pos(a, &b->pos->first);
+  lint(a, "extends");
+  lint_space(a);
+  lint(a, s_name(b->base.xid));
+  lint_space(a);
+  lint_lbrace(a);
+  INDENT(a, lint_ast(a, b->body))
+  lint_rbrace(a);
+
+}
+
 DECL_SECTION_FUNC(lint, void, Lint*)
 ANN static void lint_section(Lint *a, Section *b) {
 //  check_pos(a, &b->pos->first);
