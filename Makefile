@@ -13,11 +13,15 @@ CFLAGS += -Iinclude
 #CFLAGS += -flto -Ofast
 #LDFLAGS += -flto
 
-LDFLAGS += -static -lprettyerr -ltermcolor
+LDFLAGS += -lprettyerr -ltermcolor
+
+ifneq ($(shell uname), Darwin)
+LDFLAGS += -static
+endif
 
 ifeq (${BUILD_ON_WINDOWS}, 1)
 CFLAGS += -DBUILD_ON_WINDOWS=1 -D_XOPEN_SOURCE=700
-LDFLAGS += -Wl,--enable-auto-import -static
+LDFLAGS += -Wl,--enable-auto-import
 endif
 
 all: src/lint.c src/unpy.c
