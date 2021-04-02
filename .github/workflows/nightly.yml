@@ -43,9 +43,10 @@ jobs:
 
     - name: make
       if: ${{ matrix.os  == 'windows-latest' }}
-      run: CFLAGS="-IGwion/include -IGwion/ast/include -IGwion/ast/libprettyerr/src -IGwion/util/libtermcolor/src -IGwion/util/include -LGwion -LGwion/ast -LGwion/util -LGwion/ast/libprettyerr -LGwion/util/libtermcolor" make
+      run: make
       env:
         BUILD_ON_WINDOWS: 1 
+        CFLAGS: -IGwion/include -IGwion/ast/include -IGwion/ast/libprettyerr/src -IGwion/util/libtermcolor/src -IGwion/util/include -LGwion -LGwion/ast -LGwion/util -LGwion/ast/libprettyerr -LGwion/util/libtermcolor
 
     - name: Build asset
       run: |
@@ -67,7 +68,7 @@ jobs:
       with:
         upload_url: https://uploads.github.com/repos/Gwion/gwion-fmt/releases/40886026/assets{?name,label}
         release_id: 40886026 # same as above (id can just be taken out the upload_url, it's used to find old releases)
-        asset_path: ./gwion-fmt.zip # path to archive to upload
+        asset_path: ./gwion-fmt-nightly.zip # path to archive to upload
         asset_name: gwion-fmt-nightly-${{matrix.os}}-$$.zip # name to upload the release as, use $$ to insert date (YYYYMMDD) and 6 letter commit hash
         asset_content_type: application/zip # required by GitHub API
         max_releases: 1 # optional, if there are more releases than this matching the asset_name, the oldest ones are going to be deleted
