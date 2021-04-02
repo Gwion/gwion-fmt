@@ -921,7 +921,7 @@ ANN static void lint_extend_def(Lint *a, Extend_Def b) {
 //  check_pos(a, &b->pos->first);
   lint(a, "extends");
   lint_space(a);
-  lint(a, s_name(b->xid));
+  lint_type_decl(a, b->td);
   lint_space(a);
   lint_lbrace(a);
   INDENT(a, lint_ast(a, b->body))
