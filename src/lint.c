@@ -917,7 +917,7 @@ ANN static void lint_type_def(Lint *a, Type_Def b) {
 //  check_pos(a, &b->pos->last);
 }
 
-ANN static void lint_extend(Lint *a, Extend_Def b) {
+ANN static void lint_extend_def(Lint *a, Extend_Def b) {
 //  check_pos(a, &b->pos->first);
   lint(a, "extends");
   lint_space(a);
