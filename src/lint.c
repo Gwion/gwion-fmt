@@ -956,7 +956,7 @@ ANN static void lint_gw(struct AstGetter_ *arg, struct LintState *ls) {
 }
 
 ANN static void read_py(struct AstGetter_ *arg, char **ptr, size_t *sz) {
-#ifndef BUILD_IN_WINDOWS
+#ifndef BUILD_ON_WINDOWS
   FILE *f = open_memstream(ptr, sz);
 #else
   FILE *f = tmpfile();
