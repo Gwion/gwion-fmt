@@ -15,6 +15,11 @@ CFLAGS += -Iinclude
 
 LDFLAGS += -static -lprettyerr -ltermcolor
 
+ifeq (${BUILD_ON_WINDOWS}, 1)
+CFLAGS += -DBUILD_ON_WINDOWS=1 -D_XOPEN_SOURCE=700
+LDFLAGS += -Wl,--enable-auto-import -static
+endif
+
 all: src/lint.c src/unpy.c
 	${CC} ${CFLAGS} $? -Iinclude -lgwion_ast -lgwion_util ${LDFLAGS} -lpthread -lm -o ${PRG}
 
