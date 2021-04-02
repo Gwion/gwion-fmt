@@ -29,11 +29,11 @@ jobs:
 
     - name: Build
       if: ${{ matrix.os != 'windows-latest' }}
-      run: make
+      run: cd Gwion && make
 
     - name: Build
       if: ${{ matrix.os  == 'windows-latest' }}
-      run: make USE_LTO=0
+      run: cd Gwion && make USE_LTO=0
       env:
         BUILD_ON_WINDOWS: 1 
 
