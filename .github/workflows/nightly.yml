@@ -39,14 +39,14 @@ jobs:
 
     - name: make
       if: ${{ matrix.os  != 'windows-latest' }}
-      run: CFLAGS="-IGwion/include -IGwion/ast/include -IGwion/ast/libprettyerr/src -IGwion/util/libtermcolor/src -IGwion/util/include -LGwion -LGwion/ast -LGwion/util -LGwion/ast/libprettyerr -LGwion/util/libtermcolor" make
+      run: CFLAGS="-IGwion/include -IGwion/ast/include -IGwion/ast/libprettyerr/src -IGwion/util/libtermcolor/include -IGwion/util/include -LGwion -LGwion/ast -LGwion/util -LGwion/ast/libprettyerr -LGwion/util/libtermcolor" make
 
     - name: make
       if: ${{ matrix.os  == 'windows-latest' }}
       run: make
       env:
         BUILD_ON_WINDOWS: 1 
-        CFLAGS: -IGwion/include -IGwion/ast/include -IGwion/ast/libprettyerr/src -IGwion/util/libtermcolor/src -IGwion/util/include -LGwion -LGwion/ast -LGwion/util -LGwion/ast/libprettyerr -LGwion/util/libtermcolor
+        CFLAGS: -IGwion/include -IGwion/ast/include -IGwion/ast/libprettyerr/src -IGwion/util/libtermcolor/include -IGwion/util/include -LGwion -LGwion/ast -LGwion/util -LGwion/ast/libprettyerr -LGwion/util/libtermcolor
 
     - name: Build asset
       run: |
