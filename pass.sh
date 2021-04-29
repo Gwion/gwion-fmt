@@ -1,6 +1,6 @@
 #!/bin/bash
 [ $# -lt 2 ] && {
-  echo "usage: $0 <structure name>"
+  echo "usage: $0 <structure name (followed by *)> AstDesc"
   exit 1
 }
 

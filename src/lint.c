@@ -296,6 +296,10 @@ ANN static void lint_prim_nil(Lint *a, void *b) {
   lint(a, "()");
 }
 
+ANN static void lint_prim_perform(Lint *a, Symbol *b) {
+  lint(a, "{M}'%s'{0}", *b);
+}
+
 DECL_PRIM_FUNC(lint, void, Lint*)
 ANN static void lint_prim(Lint *a, Exp_Primary *b) {
   lint_prim_func[b->prim_type](a, &b->d);
@@ -521,6 +525,25 @@ ANN static void lint_stmt_exp(Lint *a, Stmt_Exp b) {
   if(b->val)
     lint_exp(a, b->val);
   lint_sc(a);
+}
+
+ANN static void lint_stmt_retry(Lint *a, Stmt_Exp b) {
+  lint(a, "{M}retry{0};");
+}
+
+ANN static void lint_handler_list(Lint *a, Handler_List b) {
+  lint_space(a);
+  lint(a, "{M}handle{0}");
+  lint_space(a);
+  if(b->next)
+    lint_handler_list(a, b->next);
+}
+
+ANN static void lint_stmt_try(Lint *a, Stmt_Try b) {
+  lint(a, "{M}try{0}");
+  lint_space(a);
+  lint_stmt(a, b->stmt);
+  lint_handler_list(a, b->handler);
 }
 
 DECL_STMT_FUNC(lint, void, Lint*)

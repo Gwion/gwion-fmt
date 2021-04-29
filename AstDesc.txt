@@ -21,7 +21,6 @@ Range*
 
 Type_Decl*
   Symbol xid
-  ?Exp
   ?Array_Sub array
   ?Type_List types
   ?Type_Decl* next
@@ -54,6 +53,8 @@ Exp*       interp
 m_str* char
 
 void*  nil
+
+Symbol perform
 
 :
 !PRIM
@@ -118,6 +119,8 @@ Exp_Dot*
 
 Exp_Lambda*
   Func_Def def
+
+Type_Decl* exp_td
 
 !exp
 Exp
@@ -185,9 +188,17 @@ Stmt_Match stmt_case
   Stmt_List list
   ?Exp when
 
-Stmt_Jump
+Stmt_Index
 
 Stmt_PP
+
+Stmt_Exp stmt_retry
+
+Stmt_Try
+  stmt
+
+Stmt_Defer
+  stmt
 
 !Stmt
 Stmt
@@ -230,7 +241,6 @@ Enum_Def
 Union_Def
   Union_List l
   ?Symbol xid
-  ?Symbol type_xid
   ?Tmpl*
 
 Fptr_Def
@@ -240,6 +250,10 @@ Type_Def
   ?Type_Decl ext
   Symbol xid
   ?Tmpl tmpl
+
+Extend_Def
+  Ast body
+  Type_Decl td
 
 !section
 Section*
