@@ -26,6 +26,7 @@ ANN void lint(Lint *a, const m_str , ...);
 ANN void lint_indent(Lint *a);
 ANN void lint_sc(Lint *a);
 ANN void lint_nl(Lint *a);
+ANN void lint_comma(Lint *a);
 ANN void lint_space(Lint *a);
 ANN void lint_lparen(Lint *a);
 ANN void lint_rparen(Lint *a);

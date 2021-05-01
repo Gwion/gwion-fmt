@@ -80,7 +80,12 @@ ANN void lint_rbrace(Lint *a) {
 
 ANN void lint_sc(Lint *a) {
   if(!a->ls->py)
-    lint(a, ";");
+    lint(a, "{-};{0}");
+}
+
+ANN void lint_comma(Lint *a) {
+  if(!a->ls->py)
+    lint(a, "{-},{0}");
 }
 
 ANN void lint_lparen(Lint *a) {
@@ -189,7 +194,7 @@ ANN static void lint_array_sub(Lint *a, Array_Sub b) {
 
 #define NEXT(a,b,c) \
   if(b->next) {     \
-    lint(a, ",");   \
+    lint_comma(a);  \
     lint_space(a);  \
     c(a, b->next);  \
   }
@@ -234,7 +239,7 @@ ANN static void lint_range(Lint *a, Range *b) {
   if(b->start)
     lint_exp(a, b->start);
   lint_space(a);
-  lint(a, ":");
+  lint(a, "{-}:{0}");
   lint_space(a);
   if(b->end)
     lint_exp(a, b->end);
@@ -624,7 +629,7 @@ ANN static void lint_stmt_each(Lint *a, Stmt_Each b) {
   lint(a, "{M}foreach{0}(");
   lint_symbol(a, b->sym);
   lint_space(a);
-  lint(a, ":");
+  lint(a, "{-}:{0}");
   lint_space(a);
   lint_exp(a, b->exp);
   lint(a, ")");
@@ -768,7 +773,7 @@ ANN static void lint_stmt_case(Lint *a, Stmt_Match b) {
     lint_exp(a, b->when);
   }
 //  lint_space(a);
-  lint(a, ":");
+  lint(a, "{-}:{0}");
   if(b->list->next)
     INDENT(a, lint_stmt_list(a, b->list))
   else {
@@ -871,7 +876,7 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
     lint_arg_list(a, b->args);
   if(fbflag(b, fbflag_variadic)) {
     if(b->args) {
-      lint(a, ",");
+      lint_comma(a);
       lint_space(a);
     }
     lint(a, "...");
