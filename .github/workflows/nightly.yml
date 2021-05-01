@@ -50,8 +50,8 @@ jobs:
 
     - name: Build asset
       run: |
-        strip gwion*
-        7z a gwion-fmt-nightly.zip gwion*
+        strip gwfmt*
+        7z a gwion-fmt-nightly.zip gwfmt*
 
     - name: Set tag
       if: ${{ matrix.os == 'ubuntu-latest' }}
