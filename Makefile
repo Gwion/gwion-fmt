@@ -1,5 +1,5 @@
 PREFIX ?= /usr/local
-PRG := gwion-fmt
+PRG := gwfmt
 
 # Warnings
 CFLAGS += -Wall -Wextra -Wno-unused
@@ -19,15 +19,29 @@ ifneq ($(shell uname), Darwin)
 LDFLAGS += -static
 endif
 
+ifeq ($(shell uname), Darwin)
+AR = /usr/bin/libtool
+AR_OPT = -static $^ -o $@
+LDFLAGS += -undefined dynamic_lookup
+else
+AR = ar
+AR_OPT = rcs $@ $^
+endif
+
 ifeq (${BUILD_ON_WINDOWS}, 1)
 CFLAGS += -DBUILD_ON_WINDOWS=1 -D_XOPEN_SOURCE=700
 LDFLAGS += -Wl,--enable-auto-import
 endif
 
-all: src/lint.c src/unpy.c
+all: ${PRG}
+
+${PRG}: src/${PRG}.o lib${PRG}.a
 	${CC} ${CFLAGS} $? -Iinclude -lgwion_ast -lgwion_util ${LDFLAGS} -lpthread -lm -o ${PRG}
 
-src/unpy.c:
+lib${PRG}.a: src/lint.o src/unpy.o
+	${AR} ${AR_OPT}
+
+src/unpy.c: src/unpy.l
 	${LEX} src/unpy.l
 
 clean:

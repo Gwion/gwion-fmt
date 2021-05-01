@@ -4,6 +4,7 @@
 #include "gwion_util.h"
 #include "gwion_ast.h"
 #include "lint.h"
+#include "lint_internal.h"
 #include "unpy.h"
 
 #define BUF_SIZE 16
@@ -26,7 +27,7 @@ ANN static enum char_type cht(const char c) {
   return cht_sp;
 }
 
-static void lint(Lint *a, const m_str fmt, ...) {
+ANN void lint(Lint *a, const m_str fmt, ...) {
   a->nl = 0;
 //  if(!a->skip) {
     va_list ap, aq;
@@ -51,14 +52,14 @@ static void lint(Lint *a, const m_str fmt, ...) {
 //  }
 }
 
-ANN static void lint_space(Lint *a) {
+ANN void lint_space(Lint *a) {
   if(!a->ls->minimize)
     lint(a, " ");
   else
     a->need_space = 1;
 }
 
-ANN static void lint_nl(Lint *a) {
+ANN void lint_nl(Lint *a) {
   const unsigned int nl = a->nl + 1;
   if(!a->ls->minimize) {
     if(a->nl < 2)
@@ -67,22 +68,44 @@ ANN static void lint_nl(Lint *a) {
   a->nl = nl;
 }
 
-ANN static void lint_lbrace(Lint *a) {
+ANN void lint_lbrace(Lint *a) {
   if(!a->ls->py)
-    lint(a, "{{");
+    lint(a, "{-}{{{0}");
 }
 
-ANN static void lint_rbrace(Lint *a) {
+ANN void lint_rbrace(Lint *a) {
   if(!a->ls->py)
-    lint(a, "}");
+    lint(a, "{-}}{0}");
 }
 
-ANN static void lint_sc(Lint *a) {
+ANN void lint_sc(Lint *a) {
   if(!a->ls->py)
     lint(a, ";");
 }
 
-ANN static void lint_indent(Lint *a) {
+ANN void lint_lparen(Lint *a) {
+  lint(a, "{-}({0}");
+}
+
+ANN void lint_rparen(Lint *a) {
+  lint(a, "{-}){0}");
+}
+
+ANN static inline void lint_lbrack(Lint *a) {
+  lint(a, "{-}[{0}");
+}
+
+ANN static inline void lint_rbrack(Lint *a) {
+  lint(a, "{-}]{0}");
+}
+
+ANN void lint_indent(Lint *a) {
+  if(a->skip_indent > 0) {
+    a->skip_indent--;
+    return;
+  }
+//  if(!a->ls->minimize)
+//    lint(a, "{-}    {Y}|{0} "); // todo: line count
   for(unsigned int i = 0; i < a->indent; ++i) {
     lint_space(a);
     lint_space(a);
@@ -125,29 +148,24 @@ ANN static void lint_prim_interp(Lint *a, Exp *b);
 #define _FLAG(a, b) (((a) & ae_flag_##b) == (ae_flag_##b))
 ANN static void lint_flag(Lint *a, ae_flag b) {
   int state = 0;
-  COLOR(a, "{G}");
   if(_FLAG(b, private) && (state = 1))
-    lint(a, "private");
+    lint(a, "{-/G}private{0}");
   else if(_FLAG(b, protect) && (state = 1))
-    lint(a, "protect");
+    lint(a, "{-/G}protect{0}");
   if(state)
     lint_space(a);
   state = 0;
-  COLOR(a, "{-G}");
   if(_FLAG(b, static) && (state = 1))
-    lint(a, "static");
+    lint(a, "{-G}static{0}");
   else if(_FLAG(b, global) && (state = 1))
-    lint(a, "global");
-  COLOR(a, "{0}");
+    lint(a, "{-G}global{0}");
   if(state)
     lint_space(a);
   state = 0;
-  COLOR(a, "{-G}");
   if(_FLAG(b, abstract) && (state = 1))
-    lint(a, "abstract");
+    lint(a, "{-G}abstract{0}");
   else if(_FLAG(b, final) && (state = 1))
-    lint(a, "final");
-  COLOR(a, "{0}");
+    lint(a, "{-G}final{0}");
   if(state)
     lint_space(a);
 }
@@ -158,7 +176,7 @@ ANN static void lint_symbol(Lint *a, Symbol b) {
 }
 
 ANN static void lint_array_sub(Lint *a, Array_Sub b) {
-  lint(a, "[");
+  lint_lbrack(a);
   if(b->exp) {
     if(b->exp->next)
       lint_space(a);
@@ -166,7 +184,7 @@ ANN static void lint_array_sub(Lint *a, Array_Sub b) {
     if(b->exp->next)
       lint_space(a);
   }
-  lint(a, "]");
+  lint_rbrack(a);
 }
 
 #define NEXT(a,b,c) \
@@ -188,27 +206,31 @@ ANN static void _lint_type_list(Lint *a, Type_List b) {
   NEXT(a, b, _lint_type_list);
 }
 
+ANN static inline void lint_init_tmpl(Lint *a) {
+  lint(a, "{-}:[{0}");
+}
+
 ANN static void lint_type_list(Lint *a, Type_List b) {
-  lint(a, ":[");
+  lint_init_tmpl(a);
   lint_space(a);
   _lint_type_list(a, b);
-  lint(a, "]");
+  lint_rbrack(a);
 }
 
 ANN static void lint_tmpl(Lint *a, Tmpl *b) {
   if(b->list) {
-    lint(a, ":[");
+    lint_init_tmpl(a);
     lint_space(a);
     lint_id_list(a, b->list);
     lint_space(a);
-    lint(a, "]");
+    lint_rbrack(a);
   }
   if(b->call)
     lint_type_list(a, b->call);
 }
 
 ANN static void lint_range(Lint *a, Range *b) {
-  lint(a, "[");
+  lint_lbrack(a);
   if(b->start)
     lint_exp(a, b->start);
   lint_space(a);
@@ -216,26 +238,27 @@ ANN static void lint_range(Lint *a, Range *b) {
   lint_space(a);
   if(b->end)
     lint_exp(a, b->end);
-  lint(a, "]");
+  lint_rbrack(a);
 }
 
 ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
   check_pos(a, &b->pos->first);
-  COLOR(a, "{+G}")
   if(GET_FLAG(b, const)) {
-    lint(a, "const");
+    lint(a, "{+G}const{0}");
     lint_space(a);
   }
-  COLOR(a, "{0}");
+  if(GET_FLAG(b, late)) {
+    lint(a, "{+/G}late{0}");
+    lint_space(a);
+  }
   lint_flag(a, b);
-  COLOR(a, "{R}")
   if(b->ref)
     lint(a, "?");
   if(b->xid)
-    lint_symbol(a, b->xid);
+    lint(a, "{+}%s{0}", s_name(b->xid));
+//    lint_symbol(a, b->xid);
   if(b->types)
     lint_type_list(a, b->types);
-  COLOR(a, "{0}")
   for(m_uint i = 0; i < b->option; ++i)
     lint(a, "?");
   if(b->array)
@@ -293,7 +316,8 @@ ANN static void lint_prim_char(Lint *a, m_str *b) {
 }
 
 ANN static void lint_prim_nil(Lint *a, void *b) {
-  lint(a, "()");
+  lint_lparen(a);
+  lint_rparen(a);
 }
 
 ANN static void lint_prim_perform(Lint *a, Symbol *b) {
@@ -308,7 +332,8 @@ ANN static void lint_prim(Lint *a, Exp_Primary *b) {
 ANN static void lint_var_decl(Lint *a, Var_Decl b) {
   check_pos(a, &b->pos->first);
   if(b->xid)
-    lint_symbol(a, b->xid);
+    lint(a, "{/}%s{0}", s_name(b->xid));
+//    lint_symbol(a, b->xid);
   if(b->array)
     lint_array_sub2(a, b->array);
   check_pos(a, &b->pos->last);
@@ -370,10 +395,10 @@ ANN static int isop(const Symbol s) {
 
 ANN static void lint_exp_unary(Lint *a, Exp_Unary *b) {
   if(s_name(b->op)[0] == '$' && !isop(b->op))
-    lint(a, "(");
+    lint_lparen(a);
   lint_op(a, b->op);
   if(s_name(b->op)[0] == '$' && !isop(b->op))
-    lint(a, ")");
+    lint_rparen(a);
   if(!isop(b->op))
     lint_space(a);
   if(b->unary_type == unary_exp)
@@ -410,7 +435,7 @@ ANN static void lint_exp_call(Lint *a, Exp_Call *b) {
   if(b->args)
     paren_exp(a, b->args);
   else
-    lint(a, "()");
+    lint_prim_nil(a, b);
 }
 
 ANN static void lint_exp_array(Lint *a, Exp_Array *b) {
@@ -467,7 +492,7 @@ ANN static void lint_exp_lambda(Lint *a, Exp_Lambda *b) {
 }
 
 DECL_EXP_FUNC(lint, void, Lint*)
-ANN static void lint_exp(Lint *a, Exp b) {
+ANN void lint_exp(Lint *a, Exp b) {
   check_pos(a, &b->pos->first);
   lint_exp_func[b->exp_type](a, &b->d);
   check_pos(a, &b->pos->last);
@@ -497,21 +522,21 @@ ANN static void lint_prim_interp(Lint *a, Exp *b) {
 ANN static void lint_array_sub2(Lint *a, Array_Sub b) {
   Exp e = b->exp;
   for(m_uint i = 0; i < b->depth; ++i) {
-    lint(a, "[");
+    lint_lbrack(a);
     if(e) {
       check_pos(a, &e->pos->first);
       lint_exp_func[e->exp_type](a, &e->d);
       check_pos(a, &e->pos->last);
       e = e->next;
     }
-    lint(a, "]");
+    lint_rbrack(a);
   }
 }
 
 ANN static void paren_exp(Lint *a, Exp b) {
-  lint(a, "(");
+  lint(a, "{-}({0}");
   lint_exp(a, b);
-  lint(a, ")");
+  lint(a, "{-}){0}");
 }
 
 ANN static void maybe_paren_exp(Lint *a, Exp b) {
@@ -644,7 +669,7 @@ ANN static void lint_stmt_code(Lint *a, Stmt_Code b) {
   lint_lbrace(a);
   if(b->stmt_list) {
     INDENT(a, lint_nl(a);
-    lint_stmt_list(a, b->stmt_list))
+      lint_stmt_list(a, b->stmt_list))
     lint_indent(a);
   }
   lint_rbrace(a);
@@ -758,6 +783,12 @@ static const char *pp[] = {
 
 ANN static void lint_stmt_pp(Lint *a, Stmt_PP b) {
   COLOR(a, "\033[34;3m")
+  if(b->pp_type == ae_pp_nl) {
+//exit(3);
+    lint_nl(a);
+    lint_indent(a);
+    lint_nl(a);
+  }
 //  if(b->pp_type != ae_pp_nl)
 //    lint(a, "#%s %s", pp[b->pp_type], b->data ?: "");
   COLOR(a, "\033[0m")
@@ -775,10 +806,14 @@ ANN static void lint_stmt_defer(Lint *a, Stmt_Defer b) {
 
 ANN static void lint_stmt(Lint *a, Stmt b) {
   check_pos(a, &b->pos->first);
+  const uint skip_indent = a->skip_indent;
   lint_indent(a);
   if(b->stmt_type <= ae_stmt_pp)
     lint_stmt_func[b->stmt_type](a, &b->d);
-  lint_nl(a);
+  if(!skip_indent) {
+    lint_nl(a);
+//    a->skip_indent--
+  }
   check_pos(a, &b->pos->last);
 }
 
@@ -824,13 +859,14 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
   if(b->td)
     lint_type_decl(a, b->td);
   if(!fbflag(b, fbflag_unary)) {
-    lint(a, "{+M}");
-    lint_symbol(a, b->xid);
-    lint(a, "{0}");
+//    lint(a, "{+M}");
+    lint(a, "{/}%s{0}", s_name(b->xid));
+//    lint_symbol(a, b->xid);
+//    lint(a, "{0}");
     if(b->tmpl)
       lint_tmpl(a, b->tmpl);
   }
-  lint(a, "(");
+  lint_lparen(a);
   if(b->args)
     lint_arg_list(a, b->args);
   if(fbflag(b, fbflag_variadic)) {
@@ -840,10 +876,10 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
     }
     lint(a, "...");
   }
-  lint(a, ")");
+  lint_rparen(a);
 }
 
-ANN static void lint_func_def(Lint *a, Func_Def b) {
+ANN void lint_func_def(Lint *a, Func_Def b) {
   check_pos(a, &b->pos->first);
   if(!fbflag(b->base, fbflag_op))
     lint(a, "{+C}fun{0}");
@@ -851,20 +887,28 @@ ANN static void lint_func_def(Lint *a, Func_Def b) {
     lint(a, "{+C}operator{0}");
   lint_space(a);
   lint_func_base(a, b->base);
+  if(a->ls->builtin) {
+    lint_sc(a);
+    lint_nl(a);
+    return;
+  }
   lint_space(a);
+  a->skip_indent += 1;
   if(!GET_FLAG(b->base, abstract) && b->d.code)
     lint_stmt(a, b->d.code);
+  else {
+    lint_sc(a);
+    lint_nl(a);
+  }
   check_pos(a, &b->pos->last);
 }
 
-ANN static void lint_class_def(Lint *a, Class_Def b) {
+ANN void lint_class_def(Lint *a, Class_Def b) {
   check_pos(a, &b->pos->first);
   lint(a, "{+C}class{0}");
   lint_space(a);
   lint_flag(a, b);
-  lint(a, "{+G}");
-  lint_symbol(a, b->base.xid);
-  lint(a, "{0}");
+  lint(a, "{+}%s{0}", s_name(b->base.xid));
   if(b->base.tmpl)
     lint_tmpl(a, b->base.tmpl);
   lint_space(a);
@@ -873,23 +917,25 @@ ANN static void lint_class_def(Lint *a, Class_Def b) {
     lint_space(a);
     lint_type_decl(a, b->base.ext);
   }
-  if(b->body) {
-    lint_lbrace(a);
-    lint_nl(a);
-    INDENT(a, lint_ast(a, b->body))
+  lint_lbrace(a);
+  if(!a->ls->builtin) {
+    if(b->body) {
+      lint_nl(a);
+      INDENT(a, lint_ast(a, b->body))
+      lint_indent(a);
+    }
     lint_rbrace(a);
-  } else
-    lint(a, "{}");
-  check_pos(a, &b->pos->last);
+    check_pos(a, &b->pos->last);
+  }
   lint_nl(a);
 }
 
-ANN static void lint_enum_def(Lint *a, Enum_Def b) {
-  lint(a, "enum");
+ANN void lint_enum_def(Lint *a, Enum_Def b) {
+  lint(a, "{+C}enum{0}");
   lint_space(a);
   lint_flag(a, b);
   if(b->xid) {
-    lint_symbol(a, b->xid);
+    lint(a, "{/}%s{0}", s_name(b->xid));
     lint_space(a);
   }
   lint_lbrace(a);
@@ -897,28 +943,31 @@ ANN static void lint_enum_def(Lint *a, Enum_Def b) {
   lint_id_list(a, b->list);
   lint_space(a);
   lint_rbrace(a);
+  lint_nl(a);
 }
 
-ANN static void lint_union_def(Lint *a, Union_Def b) {
+ANN void lint_union_def(Lint *a, Union_Def b) {
   check_pos(a, &b->pos->first);
-  lint(a, "union");
+  lint(a, "{+C}union{0}");
   lint_space(a);
   lint_flag(a, b);
-  lint_symbol(a, b->xid);
+  lint(a, "{/}%s{0}", s_name(b->xid));
   lint_space(a);
   if(b->tmpl)
     lint_tmpl(a, b->tmpl);
+  lint_space(a);
   lint_lbrace(a);
   lint_nl(a);
   INDENT(a, lint_union_list(a, b->l))
   lint_rbrace(a);
   lint_sc(a);
+  lint_nl(a);
   check_pos(a, &b->pos->last);
 }
 
-ANN static void lint_fptr_def(Lint *a, Fptr_Def b) {
+ANN void lint_fptr_def(Lint *a, Fptr_Def b) {
 //  check_pos(a, &b->pos->first);
-  lint(a, "funcdef");
+  lint(a, "{+C}funptr{0}");
   lint_space(a);
   lint_func_base(a, b->base);
   lint_sc(a);
@@ -926,13 +975,14 @@ ANN static void lint_fptr_def(Lint *a, Fptr_Def b) {
 //  check_pos(a, &b->pos->last);
 }
 
-ANN static void lint_type_def(Lint *a, Type_Def b) {
+ANN void lint_type_def(Lint *a, Type_Def b) {
 //  check_pos(a, &b->pos->first);
-  lint(a, "typedef");
+  lint(a, "{+C}typedef{0}");
   lint_space(a);
   if(b->ext)
     lint_type_decl(a, b->ext);
-  lint_symbol(a, b->xid);
+  lint(a, "{/}%s{0}", s_name(b->xid));
+//  lint_symbol(a, b->xid);
   if(b->tmpl)
     lint_tmpl(a, b->tmpl);
   lint_sc(a);
@@ -942,7 +992,7 @@ ANN static void lint_type_def(Lint *a, Type_Def b) {
 
 ANN static void lint_extend_def(Lint *a, Extend_Def b) {
 //  check_pos(a, &b->pos->first);
-  lint(a, "extends");
+  lint(a, "{+C}extends{0}");
   lint_space(a);
   lint_type_decl(a, b->td);
   lint_space(a);
@@ -961,86 +1011,11 @@ ANN static void lint_section(Lint *a, Section *b) {
 //  check_pos(a, &b->pos->last);
 }
 
-ANN static void lint_ast(Lint *a, Ast b) {
+ANN void lint_ast(Lint *a, Ast b) {
   lint_section(a, b->section);
   if(b->next) {
-    lint_nl(a);
+//    if(b->next->section->section_type != ae_section_stmt)
+//      lint_nl(a);
     lint_ast(a, b->next);
   }
-}
-
-ANN static void lint_gw(struct AstGetter_ *arg, struct LintState *ls) {
-  const Ast ast = parse(arg);
-  if(ast) {
-    Lint lint = { .mp=arg->st->p, .ls=ls};
-    lint_ast(&lint, ast);
-    free_ast(lint.mp, ast);
-  }
-}
-
-ANN static void read_py(struct AstGetter_ *arg, char **ptr, size_t *sz) {
-#ifndef BUILD_ON_WINDOWS
-  FILE *f = open_memstream(ptr, sz);
-#else
-  FILE *f = tmpfile();
-  fwrite(ptr, 1, sz, f);
-#endif
-  yyin = arg->f;
-  yyout = f;
-  yylex();
-  fclose(f);
-}
-
-ANN static void lint_unpy(struct AstGetter_ *arg, struct LintState *ls) {
-  char *ptr;
-  size_t sz;
-  read_py(arg, &ptr, &sz);
-  if(!ls->onlypy) {
-    FILE *f = fmemopen(ptr, sz, "r");
-    struct AstGetter_ new_arg = { arg->name, f, arg->st , .ppa=arg->ppa };
-    lint_gw(&new_arg, ls);
-    fclose(f);
-  } else
-    printf(ptr);
-  free(ptr);
-}
-
-int main(int argc, char **argv) {
-  MemPool mp = mempool_ini(sizeof(struct Exp_));
-  SymTable* st = new_symbol_table(mp, 65347); // could be smaller
-  struct PPArg_ ppa = { .lint = 1 };
-  pparg_ini(mp, &ppa);
-  struct LintState ls = { .color=isatty(1) };
-
-  for(int i = 1; i < argc; ++i) {
-    if(!strcmp(argv[i], "-p")) {
-      ls.py = !ls.py;
-      continue;
-    } else if(!strcmp(argv[i], "-u")) {
-      ls.unpy = !ls.unpy;
-      continue;
-    } else if(!strcmp(argv[i], "-e")) { // expand
-      ppa.lint = !ppa.lint;
-      continue;
-    } else if(!strcmp(argv[i], "-r")) { // only pythonify
-      ls.onlypy = ls.unpy = !ls.onlypy;
-      continue;
-    } else if(!strcmp(argv[i], "-m")) {
-      ls.minimize = 1;
-      ls.onlypy = ls.unpy = 0;
-      continue;
-    } else if(!strcmp(argv[i], "-c")) {
-      ls.color = !ls.color;
-      continue;
-    }
-    FILE* file = fopen(argv[i], "r");
-    if(!file)
-      continue;
-    struct AstGetter_ arg = { argv[i], file, st , .ppa=&ppa };
-    (!ls.unpy ? lint_gw: lint_unpy)(&arg, &ls);
-    fclose(file);
-  }
-  pparg_end(&ppa);
-  free_symbols(st);
-  mempool_end(mp);
 }
