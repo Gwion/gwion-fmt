@@ -7,6 +7,8 @@ struct LintState {
   bool minimize;
   bool color;
   bool builtin;
+  bool pretty;
+  bool show_line;
 };
 
 typedef struct {
@@ -18,6 +20,7 @@ typedef struct {
   unsigned int skip_indent;
   unsigned int nl;
   enum char_type last;
+  unsigned int line;
 //  m_bool skip; // check_pos
   m_bool need_space;
 } Lint;

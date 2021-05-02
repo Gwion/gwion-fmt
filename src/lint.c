@@ -61,9 +61,13 @@ ANN void lint_space(Lint *a) {
 
 ANN void lint_nl(Lint *a) {
   const unsigned int nl = a->nl + 1;
+  a->line++;
   if(!a->ls->minimize) {
-    if(a->nl < 2)
+    if(a->nl < 2) {
       lint(a, "\n");
+      if(!a->ls->pretty && a->ls->show_line)
+        lint(a, "{0}{-} % 4u{Y}┃{0} ", a->line);
+    }
   }
   a->nl = nl;
 }
@@ -617,11 +621,22 @@ ANN static void lint_stmt_for(Lint *a, Stmt_For b) {
   a->ls->py = 0;
   if(b->c2)
     lint_stmt_exp(a, &b->c2->d.stmt_exp);
-  lint_space(a);
   a->ls->py = py;
-  if(b->c3)
+  if(b->c3) {
+    lint_space(a);
     lint_exp(a, b->c3);
+  }
   lint(a, ")");
+  if(b->body->stmt_type == ae_stmt_code)
+    lint_space(a);
+  else if(!(b->body->stmt_type == ae_stmt_exp &&
+       !b->body->d.stmt_exp.val)) {
+    lint_space(a);
+    lint_nl(a);
+    a->indent++;
+    lint_indent(a);
+    a->indent--;
+  }
   lint_stmt(a, b->body);
 }
 
@@ -787,16 +802,17 @@ static const char *pp[] = {
 };
 
 ANN static void lint_stmt_pp(Lint *a, Stmt_PP b) {
-  COLOR(a, "\033[34;3m")
-  if(b->pp_type == ae_pp_nl) {
+//  COLOR(a, "\033[34;3m")
+  if(b->pp_type != ae_pp_nl &&
+     b->pp_type != ae_pp_comment) {
 //exit(3);
     lint_nl(a);
     lint_indent(a);
-    lint_nl(a);
+//    lint_nl(a);
   }
 //  if(b->pp_type != ae_pp_nl)
 //    lint(a, "#%s %s", pp[b->pp_type], b->data ?: "");
-  COLOR(a, "\033[0m")
+//  COLOR(a, "\033[0m")
 }
 
 ANN static void lint_stmt_defer(Lint *a, Stmt_Defer b) {
@@ -812,12 +828,16 @@ ANN static void lint_stmt_defer(Lint *a, Stmt_Defer b) {
 ANN static void lint_stmt(Lint *a, Stmt b) {
   check_pos(a, &b->pos->first);
   const uint skip_indent = a->skip_indent;
-  lint_indent(a);
-  if(b->stmt_type <= ae_stmt_pp)
-    lint_stmt_func[b->stmt_type](a, &b->d);
+//  if(b->stmt_type != ae_stmt_pp || !skip_indent)
+//  if(!skip_indent)
+  if(b->stmt_type != ae_stmt_pp)
+    lint_indent(a);
+  lint_stmt_func[b->stmt_type](a, &b->d);
+//  if(b->stmt_type != ae_stmt_pp && !skip_indent) {
   if(!skip_indent) {
+//  if(!skip_indent && b->stmt_type != ae_stmt_pp) {
     lint_nl(a);
-//    a->skip_indent--
+//    a->skip_indent--;
   }
   check_pos(a, &b->pos->last);
 }
@@ -837,11 +857,6 @@ ANN static void lint_union_list(Lint *a, Union_List b) {
   lint_nl(a);
   if(b->next)
     lint_union_list(a, b->next);
-}
-
-ANN static inline int isnl(Stmt b) {
-  return b->stmt_type == ae_stmt_pp &&
-         b->d.stmt_pp.pp_type == ae_pp_nl;
 }
 
 ANN static void lint_stmt_list(Lint *a, Stmt_List b) {
@@ -903,8 +918,8 @@ ANN void lint_func_def(Lint *a, Func_Def b) {
     lint_stmt(a, b->d.code);
   else {
     lint_sc(a);
-    lint_nl(a);
   }
+  lint_nl(a);
   check_pos(a, &b->pos->last);
 }
 
