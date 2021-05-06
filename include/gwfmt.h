@@ -1,6 +1,7 @@
 enum char_type { cht_id, cht_op, cht_sp };
 
 struct LintState {
+  unsigned int mark;
   bool py;
   bool unpy;
   bool onlypy;
@@ -9,6 +10,7 @@ struct LintState {
   bool builtin;
   bool pretty;
   bool show_line;
+  bool header;
 };
 
 typedef struct {
@@ -21,6 +23,7 @@ typedef struct {
   unsigned int nl;
   enum char_type last;
   unsigned int line;
+  unsigned int mark;
 //  m_bool skip; // check_pos
   m_bool need_space;
 } Lint;

@@ -3,15 +3,11 @@
 #include <limits.h>
 #include "gwion_util.h"
 #include "gwion_ast.h"
-#include "lint.h"
+#include "gwfmt.h"
 #include "lint_internal.h"
 #include "unpy.h"
 
-#define BUF_SIZE 16
-
 #define INDENT(a, b) { ++a->indent; {b;}; --a->indent; }
-
-#define COLOR(a, b) { if(a->ls->color) printf(b); }
 
 #define check_pos(a,b)
 
@@ -61,14 +57,20 @@ ANN void lint_space(Lint *a) {
 
 ANN void lint_nl(Lint *a) {
   const unsigned int nl = a->nl + 1;
-  a->line++;
   if(!a->ls->minimize) {
-    if(a->nl < 2) {
-      lint(a, "\n");
-      if(!a->ls->pretty && a->ls->show_line)
-        lint(a, "{0}{-} % 4u{Y}┃{0} ", a->line);
+     if(a->nl < 2) {
+        lint(a, "\n");
+      if(!a->ls->pretty && a->ls->show_line) {
+        lint(a, " {-}% 4u{0}", a->line);
+        if(a->mark == a->line)
+          lint(a, " {+R}>{0}");
+        else
+          lint(a, "  ");
+        lint(a, "{N}┃{0} ", a->line);
+      }
     }
   }
+  a->line++;
   a->nl = nl;
 }
 
@@ -113,8 +115,6 @@ ANN void lint_indent(Lint *a) {
     a->skip_indent--;
     return;
   }
-//  if(!a->ls->minimize)
-//    lint(a, "{-}    {Y}|{0} "); // todo: line count
   for(unsigned int i = 0; i < a->indent; ++i) {
     lint_space(a);
     lint_space(a);
@@ -181,7 +181,16 @@ ANN static void lint_flag(Lint *a, ae_flag b) {
 #define lint_flag(a, b) lint_flag(a, b->flag)
 
 ANN static void lint_symbol(Lint *a, Symbol b) {
-  lint(a, s_name(b));
+  const m_str s = s_name(b);
+  if(!strcmp(s, "true")  ||
+     !strcmp(s, "false") ||
+     !strcmp(s, "maybe") ||
+     !strcmp(s, "adc")   ||
+     !strcmp(s, "dac")   ||
+     !strcmp(s, "now"))
+    lint(a, "{B}%s{0}", s_name(b));
+  else
+    lint(a, s_name(b));
 }
 
 ANN static void lint_array_sub(Lint *a, Array_Sub b) {
@@ -264,8 +273,7 @@ ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
   if(b->ref)
     lint(a, "?");
   if(b->xid)
-    lint(a, "{+}%s{0}", s_name(b->xid));
-//    lint_symbol(a, b->xid);
+    lint(a, "{C}%s{0}", s_name(b->xid));
   if(b->types)
     lint_type_list(a, b->types);
   for(m_uint i = 0; i < b->option; ++i)
@@ -276,7 +284,6 @@ ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
     lint(a, ".");
     lint_type_decl(a, b->next);
   }
-  lint_space(a);
   check_pos(a, &b->pos->last);
 }
 
@@ -296,7 +303,7 @@ ANN static void lint_prim_float(Lint *a, m_float *b) {
 }
 
 ANN static void lint_prim_str(Lint *a, m_str *b) {
-  lint(a, "{/+Y}\"%s\"{0}", *b);
+  lint(a, "{/Y}\"%s\"{0}", *b);
 }
 
 ANN static void lint_prim_array(Lint *a, Array_Sub *b) {
@@ -308,11 +315,11 @@ ANN static void lint_prim_range(Lint *a, Range* *b) {
 }
 
 ANN static void lint_prim_hack(Lint *a, Exp *b) {
-  lint(a, "<<<");
+  lint(a, "{-R}<<<{0}");
   lint_space(a);
   lint_exp(a, *b);
   lint_space(a);
-  lint(a, ">>>");
+  lint(a, "{-R}>>>{0}");
 }
 
 ANN static void lint_prim_typeof(Lint *a, Exp *b) {
@@ -329,8 +336,14 @@ ANN static void lint_prim_nil(Lint *a, void *b) {
   lint_rparen(a);
 }
 
+ANN static void lint_effect(Lint *a, Symbol b) {
+  lint(a, "{-/C}%s{0}", s_name(b));
+}
+
 ANN static void lint_prim_perform(Lint *a, Symbol *b) {
-  lint(a, "{M}'%s'{0}", *b);
+  lint(a, "{/M}perform{0}");
+  lint_space(a);
+  lint_effect(a, *b);
 }
 
 DECL_PRIM_FUNC(lint, void, Lint*)
@@ -341,8 +354,7 @@ ANN static void lint_prim(Lint *a, Exp_Primary *b) {
 ANN static void lint_var_decl(Lint *a, Var_Decl b) {
   check_pos(a, &b->pos->first);
   if(b->xid)
-    lint(a, "{/}%s{0}", s_name(b->xid));
-//    lint_symbol(a, b->xid);
+    lint(a, "{W+}%s{0}", s_name(b->xid));
   if(b->array)
     lint_array_sub2(a, b->array);
   check_pos(a, &b->pos->last);
@@ -360,25 +372,19 @@ ANN static void lint_exp_decl(Lint *a, Exp_Decl *b) {
       lint_space(a);
     }
     lint_type_decl(a, b->td);
+    lint_space(a);
   }
   lint_var_decl_list(a, b->list);
 }
 
 ANN static void lint_exp_td(Lint *a, Type_Decl *b) {
-  lint(a, "$");
-  lint_space(a);
+  lint(a, "{-G}${0}");
+//  lint_space(a);
   lint_type_decl(a, b);
 }
 
 ANN static void lint_op(Lint *a, const Symbol b) {
-  char *str = s_name(b), c;
-  while((c = *str)) {
-    if(c == '%')
-      printf("%%");
-    else
-      printf("%c", c);
-    ++str;
-  }
+  lint(a, "{-G}%s{0}", s_name(b));
 }
 
 ANN static void lint_exp_binary(Lint *a, Exp_Binary *b) {
@@ -424,7 +430,7 @@ ANN static void lint_exp_cast(Lint *a, Exp_Cast *b) {
   else
     paren_exp(a, b->exp);
   lint_space(a);
-  lint(a, "$");
+  lint(a, "{-G}${0}");
   lint_space(a);
   lint_type_decl(a, b->td);
 }
@@ -515,13 +521,13 @@ ANN static void lint_prim_interp(Lint *a, Exp *b) {
     if(e->exp_type == ae_exp_primary && e->d.prim.prim_type == ae_prim_str) {
       lint(a, e->d.prim.d.str);
     } else {
-      lint(a, "{0}${{"); // do not use rbace
+      lint(a, "{-}${{{0}"); // do not use rbace
       lint_space(a);
       check_pos(a, &e->pos->first);
       lint_exp_func[e->exp_type](a, &e->d);
       check_pos(a, &e->pos->last);
       lint_space(a);
-      lint(a, "}{/Y}");
+      lint(a, "{-/Y}}{0}{/Y}");
     }
     e = e->next;
   }
@@ -543,9 +549,9 @@ ANN static void lint_array_sub2(Lint *a, Array_Sub b) {
 }
 
 ANN static void paren_exp(Lint *a, Exp b) {
-  lint(a, "{-}({0}");
+  lint_lparen(a);
   lint_exp(a, b);
-  lint(a, "{-}){0}");
+  lint_rparen(a);
 }
 
 ANN static void maybe_paren_exp(Lint *a, Exp b) {
@@ -562,36 +568,47 @@ ANN static void lint_stmt_exp(Lint *a, Stmt_Exp b) {
 }
 
 ANN static void lint_stmt_retry(Lint *a, Stmt_Exp b) {
-  lint(a, "{M}retry{0};");
+  lint(a, "{+M}retry{0};");
 }
 
 ANN static void lint_handler_list(Lint *a, Handler_List b) {
   lint_space(a);
-  lint(a, "{M}handle{0}");
+  lint(a, "{+M}handle{0}");
   lint_space(a);
+  if(b->xid) {
+    lint_effect(a, b->xid);
+    lint_space(a);
+  }
+  const uint indent = a->skip_indent++;
+  lint_stmt(a, b->stmt);
+  a->skip_indent = indent;
   if(b->next)
     lint_handler_list(a, b->next);
 }
 
 ANN static void lint_stmt_try(Lint *a, Stmt_Try b) {
-  lint(a, "{M}try{0}");
+  lint(a, "{+M}try{0}");
   lint_space(a);
+  const uint indent = a->skip_indent++;
   lint_stmt(a, b->stmt);
+  a->skip_indent = indent;
   lint_handler_list(a, b->handler);
 }
 
 DECL_STMT_FUNC(lint, void, Lint*)
 ANN static void lint_stmt_while(Lint *a, Stmt_Flow b) {
   if(!b->is_do) {
-    lint(a, "{M}while{0}");
+    lint(a, "{+M}while{0}");
     paren_exp(a, b->cond);
   } else
-    lint(a, "{M}do{0}");
-  lint_space(a);
+    lint(a, "{+M}do{0}");
+  if(b->body->stmt_type != ae_stmt_exp ||
+     b->body->d.stmt_exp.val)
+    lint_space(a);
   lint_stmt_func[b->body->stmt_type](a, &b->body->d);
   if(b->is_do) {
     lint_space(a);
-    lint(a, "{M}while{0}");
+    lint(a, "{+M}while{0}");
     paren_exp(a, b->cond);
     lint_sc(a);
   }
@@ -599,22 +616,23 @@ ANN static void lint_stmt_while(Lint *a, Stmt_Flow b) {
 
 ANN static void lint_stmt_until(Lint *a, Stmt_Flow b) {
   if(!b->is_do) {
-    lint(a, "{M}until{0}");
+    lint(a, "{+M}until{0}");
     paren_exp(a, b->cond);
   } else
-    lint(a, "{M}do{0}");
+    lint(a, "{+M}do{0}");
   lint_space(a);
   lint_stmt_func[b->body->stmt_type](a, &b->body->d);
   if(b->is_do) {
     lint_space(a);
-    lint(a, "{M}until{0}");
+    lint(a, "{+M}until{0}");
     paren_exp(a, b->cond);
     lint_sc(a);
   }
 }
 
 ANN static void lint_stmt_for(Lint *a, Stmt_For b) {
-  lint(a, "{M}for{0}(");
+  lint(a, "{+M}for{0}");
+  lint_lparen(a);
   lint_stmt_exp(a, &b->c1->d.stmt_exp);
   lint_space(a);
   const unsigned int py = a->ls->py;
@@ -626,7 +644,7 @@ ANN static void lint_stmt_for(Lint *a, Stmt_For b) {
     lint_space(a);
     lint_exp(a, b->c3);
   }
-  lint(a, ")");
+  lint_rparen(a);
   if(b->body->stmt_type == ae_stmt_code)
     lint_space(a);
   else if(!(b->body->stmt_type == ae_stmt_exp &&
@@ -641,22 +659,29 @@ ANN static void lint_stmt_for(Lint *a, Stmt_For b) {
 }
 
 ANN static void lint_stmt_each(Lint *a, Stmt_Each b) {
-  lint(a, "{M}foreach{0}(");
+  lint(a, "{+M}foreach{0}");
+  lint_lparen(a);
   lint_symbol(a, b->sym);
   lint_space(a);
   lint(a, "{-}:{0}");
   lint_space(a);
   lint_exp(a, b->exp);
-  lint(a, ")");
+  lint_rparen(a);
   if(b->body->stmt_type != ae_stmt_code)
     lint_nl(a);
   INDENT(a, lint_stmt(a, b->body))
 }
 
 ANN static void lint_stmt_loop(Lint *a, Stmt_Loop b) {
-  lint(a, "{M}repeat{0}");
+  lint(a, "{+M}repeat{0}");
   paren_exp(a, b->cond);
-  lint_stmt(a, b->body);
+  if (b->body->stmt_type == ae_stmt_code||
+     (b->body->stmt_type == ae_stmt_exp && !b->body->d.stmt_exp.val))
+    lint_stmt(a, b->body);
+  else {
+    lint_nl(a);
+    INDENT(a, lint_stmt(a, b->body))
+  }
 }
 
 
@@ -673,13 +698,13 @@ ANN static void lint_code(Lint *a, Stmt b) {
 }
 
 ANN static void lint_stmt_if(Lint *a, Stmt_If b) {
-  lint(a, "{M}if{0}");
+  lint(a, "{+M}if{0}");
   paren_exp(a, b->cond);
   lint_code(a, b->if_body);
   if(b->else_body) {
     lint_nl(a);
     lint_indent(a);
-    lint(a, "{M}else{0}");
+    lint(a, "{+M}else{0}");
     lint_code(a, b->else_body);
   }
 }
@@ -696,22 +721,20 @@ ANN static void lint_stmt_code(Lint *a, Stmt_Code b) {
 }
 
 ANN static void lint_stmt_varloop(Lint *a, Stmt_VarLoop b) {
-  COLOR(a, "\033[37;2m")
-  lint(a, "varloop");
-  COLOR(a, "\033[0m")
+  lint(a, "{+M}varloop{0}");
   lint_space(a);
   lint_exp(a, b->exp);
   if(b->body->stmt_type != ae_stmt_code) {
     lint_nl(a);
     INDENT(a, lint_stmt(a, b->body))
-  } else
+  } else {
+    lint_space(a);
     lint_stmt_code(a, &b->body->d.stmt_code);
+  }
 }
 
 ANN static void lint_stmt_break(Lint *a, Stmt_Index b) {
-  COLOR(a, "\033[34m")
-  lint(a, "break");
-  COLOR(a, "\033[0m")
+  lint(a, "{+M}break{0}");
   if(b->idx) {
     lint_space(a);
     lint_prim_num(a, &b->idx);
@@ -720,20 +743,16 @@ ANN static void lint_stmt_break(Lint *a, Stmt_Index b) {
 }
 
 ANN static void lint_stmt_continue(Lint *a, Stmt_Index b) {
-  COLOR(a, "\033[34m")
-  lint(a, "continue");
+  lint(a, "{+M}continue{0}");
   if(b->idx) {
     lint_space(a);
     lint_prim_num(a, &b->idx);
   }
-  COLOR(a, "\033[0m")
   lint_sc(a);
 }
 
 ANN static void lint_stmt_return(Lint *a, Stmt_Exp b) {
-  COLOR(a, "\033[34m")
-  lint(a, "return");
-  COLOR(a, "\033[0m")
+  lint(a, "{+M}return{0}");
   if(b->val) {
     lint_space(a);
     lint_exp(a, b->val);
@@ -750,9 +769,7 @@ ANN static void lint_case_list(Lint *a, Stmt_List b) {
 }
 
 ANN static void lint_stmt_match(Lint *a, Stmt_Match b) {
-  COLOR(a, "\033[37;2m")
-  lint(a, "match");
-  COLOR(a, "\033[0m")
+  lint(a, "{+M}match{0}");
   lint_space(a);
   lint_exp(a, b->cond);
   lint_space(a);
@@ -764,9 +781,7 @@ ANN static void lint_stmt_match(Lint *a, Stmt_Match b) {
   lint_rbrace(a);
   if(b->where) {
     lint_space(a);
-    COLOR(a, "\033[37;2m")
-    lint(a, "where");
-    COLOR(a, "\033[0m")
+    lint(a, "{+M}where{0}");
     lint_space(a);
     lint_stmt(a, b->where);
   }
@@ -774,16 +789,12 @@ ANN static void lint_stmt_match(Lint *a, Stmt_Match b) {
 
 ANN static void lint_stmt_case(Lint *a, Stmt_Match b) {
   lint_indent(a);
-  COLOR(a, "\033[37;2m")
-  lint(a, "case");
-  COLOR(a, "\033[0m")
+  lint(a, "{+M}case{0}");
   lint_space(a);
   lint_exp(a, b->cond);
   if(b->when) {
     lint_space(a);
-    COLOR(a, "\033[37;2m")
-    lint(a, "when");
-    COLOR(a, "\033[0m")
+    lint(a, "{+M}when{0}");
     lint_space(a);
     lint_exp(a, b->when);
   }
@@ -798,53 +809,47 @@ ANN static void lint_stmt_case(Lint *a, Stmt_Match b) {
 }
 
 static const char *pp[] = {
-  "!", "include", "define", "pragma", "undef", "ifdef", "ifndef", "else", "endif",
+  "!", "include", "define", "pragma", "undef", "ifdef", "ifndef", "else", "endif", "require"
+};
+
+static const char *pp_color[] = {
+  "{-}", "{Y}", "{G}", "{R}", "{W}", "{B}", "{B}", "{B}", "{B}", "{+C}"
 };
 
 ANN static void lint_stmt_pp(Lint *a, Stmt_PP b) {
-//  COLOR(a, "\033[34;3m")
-  if(b->pp_type != ae_pp_nl &&
-     b->pp_type != ae_pp_comment) {
-//exit(3);
-    lint_nl(a);
-    lint_indent(a);
-//    lint_nl(a);
+  if(b->pp_type != ae_pp_comment)
+    lint(a, "{M/}#%s{0} %s%s{0}", pp[b->pp_type],
+             pp_color[b->pp_type], b->data ?: "");
+  else {
+    if(!b->data || (*b->data != '-' && *b->data != '+'))
+      lint(a, "{/-}#%s%s{0}", pp[b->pp_type], b->data ?: "");
+    else
+      lint(a, "{/+}#!%s{0}", b->data ?:"");
   }
-//  if(b->pp_type != ae_pp_nl)
-//    lint(a, "#%s %s", pp[b->pp_type], b->data ?: "");
-//  COLOR(a, "\033[0m")
 }
 
 ANN static void lint_stmt_defer(Lint *a, Stmt_Defer b) {
-  COLOR(a, "\033[34;3m")
-  lint(a, "defer");
-  COLOR(a, "\033[0m")
+  lint(a, "{+M}defer{0}");
   lint_space(a);
   lint_stmt(a, b->stmt);
-//  if(b->pp_type != ae_pp_nl)
-//    lint(a, "#%s %s", pp[b->pp_type], b->data ?: "");
 }
 
 ANN static void lint_stmt(Lint *a, Stmt b) {
   check_pos(a, &b->pos->first);
   const uint skip_indent = a->skip_indent;
-//  if(b->stmt_type != ae_stmt_pp || !skip_indent)
-//  if(!skip_indent)
   if(b->stmt_type != ae_stmt_pp)
     lint_indent(a);
   lint_stmt_func[b->stmt_type](a, &b->d);
-//  if(b->stmt_type != ae_stmt_pp && !skip_indent) {
-  if(!skip_indent) {
-//  if(!skip_indent && b->stmt_type != ae_stmt_pp) {
+  if(!skip_indent)
     lint_nl(a);
-//    a->skip_indent--;
-  }
   check_pos(a, &b->pos->last);
 }
 
 ANN static void lint_arg_list(Lint *a, Arg_List b) {
-  if(b->td)
+  if(b->td) {
     lint_type_decl(a, b->td);
+    lint_space(a);
+  }
   lint_var_decl(a, b->var_decl);
   NEXT(a, b, lint_arg_list);
 }
@@ -852,6 +857,7 @@ ANN static void lint_arg_list(Lint *a, Arg_List b) {
 ANN static void lint_union_list(Lint *a, Union_List b) {
   lint_indent(a);
   lint_type_decl(a, b->td);
+  lint_space(a);
   lint_symbol(a, b->xid);
   lint_sc(a);
   lint_nl(a);
@@ -869,20 +875,19 @@ ANN static void lint_stmt_list(Lint *a, Stmt_List b) {
 ANN static void lint_func_base(Lint *a, Func_Base *b) {
   lint_flag(a, b);
   if(fbflag(b, fbflag_unary)) {
-    lint(a, "{+M}");
+    lint(a, "{M}");
     lint_op(a, b->xid);
     lint(a, "{0}");
     lint_space(a);
     if(b->tmpl)
       lint_tmpl(a, b->tmpl);
   }
-  if(b->td)
+  if(b->td) {
     lint_type_decl(a, b->td);
+    lint_space(a);
+  }
   if(!fbflag(b, fbflag_unary)) {
-//    lint(a, "{+M}");
-    lint(a, "{/}%s{0}", s_name(b->xid));
-//    lint_symbol(a, b->xid);
-//    lint(a, "{0}");
+    lint(a, "{M}%s{0}", s_name(b->xid));
     if(b->tmpl)
       lint_tmpl(a, b->tmpl);
   }
@@ -897,6 +902,13 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
     lint(a, "...");
   }
   lint_rparen(a);
+  if(b->effects.ptr) {
+    lint(a, "{/M}perform{0}");
+    lint_space(a);
+    for(m_uint i = 0; i < vector_size(&b->effects) -1; i++)
+      lint_effect(a, (Symbol)vector_at(&b->effects, i));
+    lint_effect(a, (Symbol)vector_back(&b->effects));
+  }
 }
 
 ANN void lint_func_def(Lint *a, Func_Def b) {
@@ -928,7 +940,7 @@ ANN void lint_class_def(Lint *a, Class_Def b) {
   lint(a, "{+C}class{0}");
   lint_space(a);
   lint_flag(a, b);
-  lint(a, "{+}%s{0}", s_name(b->base.xid));
+  lint(a, "{+W}%s{0}", s_name(b->base.xid));
   if(b->base.tmpl)
     lint_tmpl(a, b->base.tmpl);
   lint_space(a);
@@ -936,6 +948,7 @@ ANN void lint_class_def(Lint *a, Class_Def b) {
     lint(a, "{+/C}extends{0}");
     lint_space(a);
     lint_type_decl(a, b->base.ext);
+    lint_space(a);
   }
   lint_lbrace(a);
   if(!a->ls->builtin) {
@@ -999,10 +1012,11 @@ ANN void lint_type_def(Lint *a, Type_Def b) {
 //  check_pos(a, &b->pos->first);
   lint(a, "{+C}typedef{0}");
   lint_space(a);
-  if(b->ext)
+  if(b->ext) {
     lint_type_decl(a, b->ext);
+    lint_space(a);
+  }
   lint(a, "{/}%s{0}", s_name(b->xid));
-//  lint_symbol(a, b->xid);
   if(b->tmpl)
     lint_tmpl(a, b->tmpl);
   lint_sc(a);
@@ -1034,8 +1048,7 @@ ANN static void lint_section(Lint *a, Section *b) {
 ANN void lint_ast(Lint *a, Ast b) {
   lint_section(a, b->section);
   if(b->next) {
-//    if(b->next->section->section_type != ae_section_stmt)
-//      lint_nl(a);
+    lint_nl(a);
     lint_ast(a, b->next);
   }
 }

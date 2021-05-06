@@ -35,20 +35,24 @@ endif
 
 all: ${PRG}
 
-${PRG}: src/${PRG}.o lib${PRG}.a
+${PRG}: src/${PRG}.o src/unpy.o lib${PRG}.a
 	${CC} ${CFLAGS} $? -Iinclude -lgwion_ast -lgwion_util ${LDFLAGS} -lpthread -lm -o ${PRG}
 
-lib${PRG}.a: src/lint.o src/unpy.o
+lib${PRG}.a: src/lint.o
 	${AR} ${AR_OPT}
 
 src/unpy.c: src/unpy.l
 	${LEX} src/unpy.l
 
 clean:
-	rm -rf src/*.o ${PRG}
+	rm -rf src/*.o ${PRG} lib${PRG}.a
 
 install: all
 	install ${PRG} ${PREFIX}/bin
+	install lib${PRG}.a ${PREFIX}/lib
+	install include/${PRG}.h ${PREFIX}/include/${PRG}.h
 
 uninstall:
 	rm ${PREFIX}/bin/${PRG}
+	rm ${PREFIX}/lib/lib${PRG}.a
+	rm ${PREFIX}/include/${PRG}.h
