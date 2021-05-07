@@ -809,7 +809,7 @@ ANN static void lint_stmt_case(Lint *a, Stmt_Match b) {
 }
 
 static const char *pp[] = {
-  "!", "include", "define", "pragma", "undef", "ifdef", "ifndef", "else", "endif", "require"
+  "!", "include", "define", "pragma", "undef", "ifdef", "ifndef", "else", "endif", "import"
 };
 
 static const char *pp_color[] = {
@@ -817,6 +817,8 @@ static const char *pp_color[] = {
 };
 
 ANN static void lint_stmt_pp(Lint *a, Stmt_PP b) {
+  if(b->pp_type == ae_pp_nl)
+    return;
   if(b->pp_type != ae_pp_comment)
     lint(a, "{M/}#%s{0} %s%s{0}", pp[b->pp_type],
              pp_color[b->pp_type], b->data ?: "");
