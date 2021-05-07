@@ -232,6 +232,7 @@ ANN static void lint_type_list(Lint *a, Type_List b) {
   lint_init_tmpl(a);
   lint_space(a);
   _lint_type_list(a, b);
+  lint_space(a);
   lint_rbrack(a);
 }
 
