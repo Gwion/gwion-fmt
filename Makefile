@@ -5,9 +5,9 @@ PRG := gwfmt
 CFLAGS += -Wall -Wextra -Wno-unused
 
 # Includes
-CFLAGS += -I/usr/local/include/gwion/util
-CFLAGS += -I/usr/local/include/gwion/ast
-CFLAGS += -I/usr/local/include/libtermcolor
+CFLAGS += -I../util/include
+CFLAGS += -I../ast/include
+CFLAGS += -I../util/libtermcolor/include
 CFLAGS += -Iinclude
 
 #CFLAGS += -flto -Ofast
@@ -35,10 +35,10 @@ endif
 
 all: ${PRG}
 
-${PRG}: src/${PRG}.o src/unpy.o lib${PRG}.a
+${PRG}: src/${PRG}.o src/unpy.o libgwion-fmt.a
 	${CC} ${CFLAGS} $? -Iinclude -lgwion_ast -lgwion_util ${LDFLAGS} -lpthread -lm -o ${PRG}
 
-lib${PRG}.a: src/lint.o
+libgwion-fmt.a: src/lint.o
 	${AR} ${AR_OPT}
 
 src/unpy.c: src/unpy.l
