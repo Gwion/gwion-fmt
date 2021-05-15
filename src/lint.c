@@ -260,6 +260,30 @@ ANN static void lint_range(Lint *a, Range *b) {
   lint_rbrack(a);
 }
 
+ANN static void lint_effect(Lint *a, Symbol b) {
+  lint(a, "{-/C}%s{0}", s_name(b));
+}
+
+ANN static void lint_perform(Lint *a) {
+  lint(a, "{/M}perform{0}");
+  lint_space(a);
+}
+
+ANN static void lint_prim_perform(Lint *a, Symbol *b) {
+  lint(a, "{/M}perform{0}");
+  lint_space(a);
+  lint_effect(a, *b);
+}
+
+ANN static void lint_effects(Lint *a, Vector b) {
+  lint_perform(a);
+  for(m_uint i = 0; i < vector_size(b) -1; i++) {
+    lint_effect(a, (Symbol)vector_at(b, i));
+    lint_space(a);
+  }
+  lint_effect(a, (Symbol)vector_back(b));
+}
+
 ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
   check_pos(a, &b->pos->first);
   if(GET_FLAG(b, const)) {
@@ -273,7 +297,30 @@ ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
   lint_flag(a, b);
   if(b->ref)
     lint(a, "?");
-  if(b->xid)
+  if(b->fptr) {
+    const Fptr_Def fptr = b->fptr;
+    lint_lparen(a);
+    if(b->fptr->base->flag != ae_flag_none) {
+      lint_flag(a, fptr->base);
+      lint_space(a);
+    }
+    lint_type_decl(a, fptr->base->td);
+    lint_lparen(a);
+    if(fptr->base->args)
+      lint_arg_list(a, fptr->base->args);
+    if(fbflag(fptr->base, fbflag_variadic)) {
+      if(fptr->base->args) {
+        lint_comma(a);
+        lint_space(a);
+      }
+      lint(a, "...");
+    }
+    lint_rparen(a);
+    if(fptr->base->effects.ptr)
+      lint_effects(a, &fptr->base->effects);
+    lint_rparen(a);
+//    lint(a, "{C}%s{0}", s_name(b->xid));
+  } else if(b->xid)
     lint(a, "{C}%s{0}", s_name(b->xid));
   if(b->types)
     lint_type_list(a, b->types);
@@ -335,16 +382,6 @@ ANN static void lint_prim_char(Lint *a, m_str *b) {
 ANN static void lint_prim_nil(Lint *a, void *b) {
   lint_lparen(a);
   lint_rparen(a);
-}
-
-ANN static void lint_effect(Lint *a, Symbol b) {
-  lint(a, "{-/C}%s{0}", s_name(b));
-}
-
-ANN static void lint_prim_perform(Lint *a, Symbol *b) {
-  lint(a, "{/M}perform{0}");
-  lint_space(a);
-  lint_effect(a, *b);
 }
 
 DECL_PRIM_FUNC(lint, void, Lint*)
@@ -577,6 +614,7 @@ ANN static void lint_handler_list(Lint *a, Handler_List b) {
   lint(a, "{+M}handle{0}");
   lint_space(a);
   if(b->xid) {
+    lint_perform(a);
     lint_effect(a, b->xid);
     lint_space(a);
   }
@@ -851,7 +889,8 @@ ANN static void lint_stmt(Lint *a, Stmt b) {
 ANN static void lint_arg_list(Lint *a, Arg_List b) {
   if(b->td) {
     lint_type_decl(a, b->td);
-    lint_space(a);
+    if(b->var_decl->xid)
+      lint_space(a);
   }
   lint_var_decl(a, b->var_decl);
   NEXT(a, b, lint_arg_list);
@@ -905,13 +944,8 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
     lint(a, "...");
   }
   lint_rparen(a);
-  if(b->effects.ptr) {
-    lint(a, "{/M}perform{0}");
-    lint_space(a);
-    for(m_uint i = 0; i < vector_size(&b->effects) -1; i++)
-      lint_effect(a, (Symbol)vector_at(&b->effects, i));
-    lint_effect(a, (Symbol)vector_back(&b->effects));
-  }
+  if(b->effects.ptr)
+    lint_effects(a, &b->effects);
 }
 
 ANN void lint_func_def(Lint *a, Func_Def b) {

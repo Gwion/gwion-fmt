@@ -10,6 +10,11 @@ CFLAGS += -I../ast/include
 CFLAGS += -I../util/libtermcolor/include
 CFLAGS += -Iinclude
 
+# Libraries
+LDFLAGS += -L../util
+LDFLAGS += -L../ast
+LDFLAGS += -L../util/libtermcolor
+
 #CFLAGS += -flto -Ofast
 #LDFLAGS += -flto
 
