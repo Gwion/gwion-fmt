@@ -25,7 +25,7 @@ jobs:
       run: |
         git clone https://github.com/Gwion/Gwion
         cd Gwion
-        git submodule update --init --recursive util ast libcmdapp
+        git submodule update --init --recursive
 
     - name: Build
       if: ${{ matrix.os != 'windows-latest' }}
@@ -39,14 +39,13 @@ jobs:
 
     - name: make
       if: ${{ matrix.os  != 'windows-latest' }}
-      run: CFLAGS="-IGwion/include -IGwion/ast/include -IGwion/ast/libprettyerr/src -IGwion/util/libtermcolor/include -IGwion/util/include -LGwion -LGwion/ast -LGwion/util -LGwion/ast/libprettyerr -LGwion/util/libtermcolor" make
+      run: cd Gwion/fmt && make
 
     - name: make
       if: ${{ matrix.os  == 'windows-latest' }}
-      run: make
+      run: cd Gwion/fmt && make USE_LTO=0
       env:
         BUILD_ON_WINDOWS: 1 
-        CFLAGS: -IGwion/include -IGwion/ast/include -IGwion/ast/libprettyerr/src -IGwion/util/libtermcolor/include -IGwion/util/include -LGwion -LGwion/ast -LGwion/util -LGwion/ast/libprettyerr -LGwion/util/libtermcolor
 
     - name: Build asset
       run: |

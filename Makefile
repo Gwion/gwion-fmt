@@ -45,7 +45,7 @@ src/unpy.c: src/unpy.l
 	${LEX} src/unpy.l
 
 clean:
-	rm -rf src/*.o ${PRG} lib${PRG}.a
+	rm -rf src/*.o ${PRG} libgwion-fmt.a
 
 install: all
 	install ${PRG} ${PREFIX}/bin
