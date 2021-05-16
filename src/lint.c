@@ -610,7 +610,6 @@ ANN static void lint_stmt_retry(Lint *a, Stmt_Exp b) {
 }
 
 ANN static void lint_handler_list(Lint *a, Handler_List b) {
-  lint_space(a);
   lint(a, "{+M}handle{0}");
   lint_space(a);
   if(b->xid) {
@@ -1047,7 +1046,7 @@ ANN void lint_fptr_def(Lint *a, Fptr_Def b) {
 
 ANN void lint_type_def(Lint *a, Type_Def b) {
 //  check_pos(a, &b->pos->first);
-  lint(a, "{+C}typedef{0}");
+  lint(a, "{+C}%s{0}", !b->distinct ? "typedef" : "distinct");
   lint_space(a);
   if(b->ext) {
     lint_type_decl(a, b->ext);
@@ -1056,6 +1055,15 @@ ANN void lint_type_def(Lint *a, Type_Def b) {
   lint(a, "{/}%s{0}", s_name(b->xid));
   if(b->tmpl)
     lint_tmpl(a, b->tmpl);
+  if(b->when) {
+    lint_nl(a);
+    a->indent += 2;
+    lint_indent(a);
+    lint(a, "{M}when{0}");
+    a->indent -= 2;
+    lint_space(a);
+    lint_exp(a, b->when);
+  }
   lint_sc(a);
   lint_nl(a);
 //  check_pos(a, &b->pos->last);
