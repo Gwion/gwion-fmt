@@ -712,7 +712,14 @@ ANN static void lint_stmt_each(Lint *a, Stmt_Each b) {
 
 ANN static void lint_stmt_loop(Lint *a, Stmt_Loop b) {
   lint(a, "{+M}repeat{0}");
-  paren_exp(a, b->cond);
+  lint_lparen(a);
+  if(b->idx) {
+    lint_symbol(a, b->idx->sym);
+    lint_comma(a);
+    lint_space(a);
+  }
+  lint_exp(a, b->cond);
+  lint_rparen(a);
   if (b->body->stmt_type == ae_stmt_code||
      (b->body->stmt_type == ae_stmt_exp && !b->body->d.stmt_exp.val))
     lint_stmt(a, b->body);
