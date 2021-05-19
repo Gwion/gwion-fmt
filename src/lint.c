@@ -899,6 +899,12 @@ ANN static void lint_arg_list(Lint *a, Arg_List b) {
       lint_space(a);
   }
   lint_var_decl(a, b->var_decl);
+  if(b->exp) {
+    lint_space(a);
+    lint(a, ":");
+    lint_space(a);
+    lint_exp(a, b->exp);
+  }
   NEXT(a, b, lint_arg_list);
 }
 
