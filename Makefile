@@ -14,6 +14,7 @@ CFLAGS += -Iinclude
 LDFLAGS += -L../util
 LDFLAGS += -L../ast
 LDFLAGS += -L../util/libtermcolor
+LDFLAGS += -L../ast/libprettyerr
 
 #CFLAGS += -flto -Ofast
 #LDFLAGS += -flto
