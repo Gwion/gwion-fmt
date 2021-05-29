@@ -219,6 +219,19 @@ ANN static void lint_id_list(Lint *a, ID_List b) {
   NEXT(a, b, lint_id_list)
 }
 
+ANN static void lint_specialized_list(Lint *a, Specialized_List b) {
+  check_pos(a, &b->pos->first);
+  lint_symbol(a, b->xid);
+  if(b->traits) {
+    lint_space(a);
+    lint(a, ":");
+    lint_space(a);
+    lint_id_list(a, b->traits);
+  }
+  check_pos(a, &b->pos->last);
+  NEXT(a, b, lint_specialized_list)
+}
+
 ANN static void _lint_type_list(Lint *a, Type_List b) {
   lint_type_decl(a, b->td);
   NEXT(a, b, _lint_type_list);
@@ -240,7 +253,7 @@ ANN static void lint_tmpl(Lint *a, Tmpl *b) {
   if(b->list) {
     lint_init_tmpl(a);
     lint_space(a);
-    lint_id_list(a, b->list);
+    lint_specialized_list(a, b->list);
     lint_space(a);
     lint_rbrack(a);
   }
@@ -984,6 +997,13 @@ ANN void lint_func_def(Lint *a, Func_Def b) {
   check_pos(a, &b->pos->last);
 }
 
+ANN void lint_traits(Lint *a, ID_List b) {
+  lint(a, ":");
+  lint_space(a);
+  lint_id_list(a, b);
+  lint_space(a);
+}
+
 ANN void lint_class_def(Lint *a, Class_Def b) {
   check_pos(a, &b->pos->first);
   lint(a, "{+C}class{0}");
@@ -999,6 +1019,8 @@ ANN void lint_class_def(Lint *a, Class_Def b) {
     lint_type_decl(a, b->base.ext);
     lint_space(a);
   }
+  if(b->traits)
+    lint_traits(a, b->traits);
   lint_lbrace(a);
   if(!a->ls->builtin) {
     if(b->body) {
@@ -1090,6 +1112,21 @@ ANN static void lint_extend_def(Lint *a, Extend_Def b) {
   lint_space(a);
   lint_lbrace(a);
   INDENT(a, lint_ast(a, b->body))
+  lint_rbrace(a);
+  lint_nl(a);
+}
+
+ANN static void lint_trait_def(Lint *a, Trait_Def b) {
+  lint(a, "{+C}trait{0}");
+  lint_space(a);
+  lint_symbol(a, b->xid);
+  lint_space(a);
+  lint_lbrace(a);
+  if(b->body) {
+    lint_nl(a);
+    INDENT(a, lint_ast(a, b->body))
+    lint_indent(a);
+  }
   lint_rbrace(a);
   lint_nl(a);
 }
