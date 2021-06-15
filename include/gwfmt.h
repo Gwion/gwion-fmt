@@ -2,33 +2,33 @@ enum char_type { cht_id, cht_op, cht_sp };
 
 struct LintState {
   unsigned int mark;
-  bool py;
-  bool unpy;
-  bool onlypy;
-  bool minimize;
-  bool color;
-  bool builtin;
-  bool pretty;
-  bool show_line;
-  bool header;
+  bool         py;
+  bool         unpy;
+  bool         onlypy;
+  bool         minimize;
+  bool         color;
+  bool         builtin;
+  bool         pretty;
+  bool         show_line;
+  bool         header;
 };
 
 typedef struct {
-  MemPool mp;
-  Map macro;
+  MemPool           mp;
+  Map               macro;
   struct LintState *ls;
-//  struct pos_t pos;
-  unsigned int indent;
-  unsigned int skip_indent;
-  unsigned int nl;
+  //  struct pos_t pos;
+  unsigned int   indent;
+  unsigned int   skip_indent;
+  unsigned int   nl;
   enum char_type last;
-  unsigned int line;
-  unsigned int mark;
-//  m_bool skip; // check_pos
-  m_bool need_space;
+  unsigned int   line;
+  unsigned int   mark;
+  //  bool skip; // check_pos
+  bool need_space;
 } Lint;
 
-ANN void lint(Lint *a, const m_str , ...);
+ANN void lint(Lint *a, const m_str, ...);
 ANN void lint_indent(Lint *a);
 ANN void lint_sc(Lint *a);
 ANN void lint_nl(Lint *a);
