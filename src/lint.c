@@ -193,14 +193,19 @@ ANN static void lint_id_list(Lint *a, ID_List b) {
   NEXT(a, b, lint_id_list)
 }
 
+ANN void lint_traits(Lint *a, ID_List b) {
+  lint(a, ":");
+  lint_space(a);
+  lint_id_list(a, b);
+  lint_space(a);
+}
+
 ANN static void lint_specialized_list(Lint *a, Specialized_List b) {
   check_pos(a, &b->pos->first);
-  lint_symbol(a, b->xid);
+  lint(a, "{-C}%s{0}", s_name(b->xid));
   if (b->traits) {
     lint_space(a);
-    lint(a, ":");
-    lint_space(a);
-    lint_id_list(a, b->traits);
+    lint_traits(a, b->traits);
   }
   check_pos(a, &b->pos->last);
   NEXT(a, b, lint_specialized_list)
@@ -918,13 +923,6 @@ ANN void lint_func_def(Lint *a, Func_Def b) {
   }
   lint_nl(a);
   check_pos(a, &b->pos->last);
-}
-
-ANN void lint_traits(Lint *a, ID_List b) {
-  lint(a, ":");
-  lint_space(a);
-  lint_id_list(a, b);
-  lint_space(a);
 }
 
 ANN void lint_class_def(Lint *a, Class_Def b) {
