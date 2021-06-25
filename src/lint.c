@@ -888,6 +888,8 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
     lint(a, "{M}%s{0}", s_name(b->xid));
     if (b->tmpl) lint_tmpl(a, b->tmpl);
   }
+  if (fbflag(b, fbflag_op))
+    lint_space(a);
   lint_lparen(a);
   if (b->args) lint_arg_list(a, b->args);
   if (fbflag(b, fbflag_variadic)) {
