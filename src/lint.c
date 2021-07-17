@@ -423,9 +423,16 @@ ANN static void lint_exp_unary(Lint *a, Exp_Unary *b) {
   if (!isop(b->op)) lint_space(a);
   if (b->unary_type == unary_exp)
     lint_exp(a, b->exp);
-  else if (b->unary_type == unary_td)
-    lint_type_decl(a, b->td);
-  else if (b->unary_type == unary_code)
+  else if (b->unary_type == unary_td) {
+    lint_type_decl(a, b->ctor.td);
+    if(b->ctor.exp) {
+      lint_lparen(a);
+      if (b->ctor.exp->exp_type != ae_exp_primary ||
+          b->ctor.exp->d.prim.prim_type != ae_prim_nil)
+        lint_exp(a, b->ctor.exp);
+      lint_rparen(a);
+    }
+  } else if (b->unary_type == unary_code)
     lint_stmt_code(a, &b->code->d.stmt_code);
 }
 
