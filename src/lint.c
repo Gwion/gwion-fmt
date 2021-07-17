@@ -912,7 +912,7 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
 
 ANN void lint_func_def(Lint *a, Func_Def b) {
   check_pos(a, &b->pos->first);
-  if (!fbflag(b->base, fbflag_op))
+  if (!fbflag(b->base, fbflag_op) && strcmp(s_name(b->base->xid), "new"))
     lint(a, "{+C}fun{0}");
   else
     lint(a, "{+C}operator{0}");
