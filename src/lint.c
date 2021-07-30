@@ -966,10 +966,10 @@ ANN void lint_enum_def(Lint *a, Enum_Def b) {
   lint(a, "{+C}enum{0}");
   lint_space(a);
   lint_flag(a, b);
-  if (b->xid) {
-    lint(a, "{/}%s{0}", s_name(b->xid));
-    lint_space(a);
-  }
+  lint(a, "{/}%s{0}", s_name(b->xid));
+  if(b->is_scoped)
+    lint(a, "{+Y}@{0}");
+  lint_space(a);
   lint_lbrace(a);
   lint_space(a);
   lint_id_list(a, b->list);
