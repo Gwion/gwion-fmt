@@ -967,8 +967,6 @@ ANN void lint_enum_def(Lint *a, Enum_Def b) {
   lint_space(a);
   lint_flag(a, b);
   lint(a, "{/}%s{0}", s_name(b->xid));
-  if(b->is_scoped)
-    lint(a, "{+Y}@{0}");
   lint_space(a);
   lint_lbrace(a);
   lint_space(a);
