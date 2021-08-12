@@ -954,7 +954,7 @@ ANN void lint_class_def(Lint *a, Class_Def b) {
     if (b->body) {
       lint_nl(a);
       INDENT(a, lint_ast(a, b->body))
-      lint_indent(a);
+//      lint_indent(a);
     }
     lint_rbrace(a);
     check_pos(a, &b->pos->last);
