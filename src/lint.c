@@ -282,7 +282,7 @@ ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
     lint_space(a);
   }
   lint_flag(a, b);
-  if (b->ref) lint(a, "?");
+  if (b->ref) lint(a, "&");
   if (b->fptr) {
     const Fptr_Def fptr = b->fptr;
     lint_lparen(a);
