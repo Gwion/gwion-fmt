@@ -329,8 +329,37 @@ ANN static void lint_prim_float(Lint *a, m_float *b) {
     lint(a, "{M}%g{0}", *b);
 }
 
-ANN static void lint_prim_str(Lint *a, m_str *b) {
-  lint(a, "{/Y}\"%s\"{0}", *b);
+ANN static void lint_string(Lint *a, m_str str) {
+  const size_t len = strlen(str);
+  size_t pass = 0;
+  const m_uint nl = a->nl;
+  while(pass < len) {
+    if(pass)
+      lint_nl(a);
+    a->nl = 0;
+    const m_str next = strchr(str, '\n');
+    if(!next) {
+      printf("{Y/}%s{0}", str);
+      break;
+    }
+    printf("{Y/}%.*s{0}", next-str, str);
+    pass += next - str + 1;
+    str = next + 1;
+  }
+  a->nl = nl;
+}
+
+ANN static void lint_prim_str(Lint *a, struct AstString *b) {
+  const uint16_t delim = b->delim > 0 ? b->delim - 1 : 0;
+  if(delim)
+    lint(a, "{-Y}%.*c\"{0}", delim, '#');
+  else
+    lint(a, "{-Y}\"{0}");
+  lint_string(a, b->data);
+  if(delim)
+    lint(a, "{-Y}\"%.*c{0}", delim, '#');
+  else
+    lint(a, "{-Y}\"{0}");
 }
 
 ANN static void lint_prim_array(Lint *a, Array_Sub *b) {
@@ -523,13 +552,14 @@ ANN void lint_exp(Lint *a, Exp b) {
 }
 
 ANN static void lint_prim_interp(Lint *a, Exp *b) {
-  lint(a, "{/Y}\"");
   Exp e = *b;
+  const uint16_t delim = e->d.prim.d.string.delim;
+  lint(a, "{Y-}%.*c\"{0}{/Y}",  delim, '#');
   while (e) {
     if (e->exp_type == ae_exp_primary && e->d.prim.prim_type == ae_prim_str) {
-      lint(a, e->d.prim.d.str);
+      lint_string(a,  e->d.prim.d.string.data);
     } else {
-      lint(a, "{-}${{{0}"); // do not use rbace
+      lint(a, "{Y/-}${{{0}"); // do not use rbace
       lint_space(a);
       check_pos(a, &e->pos->first);
       lint_exp_func[e->exp_type](a, &e->d);
@@ -539,7 +569,7 @@ ANN static void lint_prim_interp(Lint *a, Exp *b) {
     }
     e = e->next;
   }
-  lint(a, "\"{0}");
+  lint(a, "{Y-}\"%.*c{0}", delim, '#');
 }
 
 ANN static void lint_array_sub2(Lint *a, Array_Sub b) {

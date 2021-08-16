@@ -8,7 +8,7 @@ ANN static void lint_type_decl(Lint *a, Type_Decl *b);
 ANN static void lint_prim_id(Lint *a, Symbol *b);
 ANN static void lint_prim_num(Lint *a, m_int *b);
 ANN static void lint_prim_float(Lint *a, m_float *b);
-ANN static void lint_prim_str(Lint *a, m_str *b);
+ANN static void lint_prim_str(Lint *a, struct AstString *b);
 ANN static void lint_prim_array(Lint *a, Array_Sub *b);
 ANN static void lint_prim_range(Lint *a, Range **b);
 ANN static void lint_prim_hack(Lint *a, Exp *b);
