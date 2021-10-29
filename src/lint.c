@@ -247,6 +247,30 @@ ANN static void lint_range(Lint *a, Range *b) {
   lint_rbrack(a);
 }
 
+ANN static void lint_prim_dict(Lint *a, Exp *b) {
+  Exp e = *b;
+  lint_lbrace(a);
+  lint_space(a);
+  do {
+    const Exp next  = e->next;
+    const Exp nnext = next->next;
+    e->next = NULL;
+    next->next = NULL;
+    lint_exp(a, e);
+    lint_space(a);
+    lint(a, ":");
+    lint_space(a);
+    lint_exp(a, next);
+    e->next = next;
+    next->next = nnext;
+    if(nnext) {
+      lint_comma(a);
+      lint_space(a);
+    }
+  } while ((e = e->next->next));
+  lint_space(a);
+  lint_rbrace(a);
+}
 ANN static void lint_effect(Lint *a, Symbol b) {
   lint(a, "{-/C}%s{0}", s_name(b));
 }
