@@ -578,7 +578,9 @@ ANN void lint_exp(Lint *a, Exp b) {
 ANN static void lint_prim_interp(Lint *a, Exp *b) {
   Exp e = *b;
   const uint16_t delim = e->d.prim.d.string.delim;
-  lint(a, "{Y-}%.*c\"{0}{/Y}",  delim, '#');
+  if(delim > 1)
+    lint(a, "{Y-}%.*c",  delim - 1, '#');
+  lint(a, "{Y-}\"{0}{/Y}");
   while (e) {
     if (e->exp_type == ae_exp_primary && e->d.prim.prim_type == ae_prim_str) {
       lint_string(a,  e->d.prim.d.string.data);
@@ -593,7 +595,9 @@ ANN static void lint_prim_interp(Lint *a, Exp *b) {
     }
     e = e->next;
   }
-  lint(a, "{Y-}\"%.*c{0}", delim, '#');
+  if(delim > 1)
+    lint(a, "{Y-}%.*c",  delim - 1, '#');
+  lint(a, "{Y-}\"{0}{/Y}");
 }
 
 ANN static void lint_array_sub2(Lint *a, Array_Sub b) {
@@ -718,6 +722,11 @@ ANN static void lint_stmt_for(Lint *a, Stmt_For b) {
 ANN static void lint_stmt_each(Lint *a, Stmt_Each b) {
   lint(a, "{+M}foreach{0}");
   lint_lparen(a);
+  if(b->idx) {
+    lint_symbol(a, b->idx->sym);
+    lint_comma(a);
+    lint_space(a);
+  }
   lint_symbol(a, b->sym);
   lint_space(a);
   lint(a, "{-}:{0}");
