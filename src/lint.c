@@ -640,7 +640,6 @@ ANN static void lint_handler_list(Lint *a, Handler_List b) {
   lint(a, "{+M}handle{0}");
   lint_space(a);
   if (b->xid) {
-    lint_perform(a);
     lint_effect(a, b->xid);
     lint_space(a);
   }
@@ -654,7 +653,11 @@ ANN static void lint_stmt_try(Lint *a, Stmt_Try b) {
   lint(a, "{+M}try{0}");
   lint_space(a);
   const uint indent = a->skip_indent++;
+//  const uint indent = a->indent++;
   lint_stmt(a, b->stmt);
+  lint_space(a);
+//  a->indent--;
+// = indent;
   a->skip_indent = indent;
   lint_handler_list(a, b->handler);
 }
@@ -884,10 +887,12 @@ static const char *pp_color[] = {"{-}", "{Y}", "{G}", "{R}", "{W}",
 
 ANN static void lint_stmt_pp(Lint *a, Stmt_PP b) {
   if (b->pp_type == ae_pp_nl) return;
-  if (b->pp_type != ae_pp_comment)
+  if (b->pp_type != ae_pp_comment) {
     lint(a, "{M/}#%s{0} %s%s{0}", pp[b->pp_type], pp_color[b->pp_type],
          b->data ?: "");
-  else {
+  } else {
+    lint_indent(a);
+//  a->skip_indent = indent;
     if (!b->data || (*b->data != '-' && *b->data != '+'))
       lint(a, "{/-}#%s%s{0}", pp[b->pp_type], b->data ?: "");
     else
