@@ -187,10 +187,12 @@ ANN static void lint_array_sub(Lint *a, Array_Sub b) {
   }
 
 ANN static void lint_id_list(Lint *a, ID_List b) {
-  check_pos(a, &b->pos->first);
-  lint_symbol(a, b->xid);
-  check_pos(a, &b->pos->last);
-  NEXT(a, b, lint_id_list)
+  for(uint32_t i = 0; i < b->len; i++) {
+    check_pos(a, &b->pos->first);
+    Symbol xid = *mp_vector_at(b, Symbol, i);
+    lint_symbol(a, xid);
+    check_pos(a, &b->pos->last);
+  }
 }
 
 ANN void lint_traits(Lint *a, ID_List b) {
@@ -201,19 +203,23 @@ ANN void lint_traits(Lint *a, ID_List b) {
 }
 
 ANN static void lint_specialized_list(Lint *a, Specialized_List b) {
-  check_pos(a, &b->pos->first);
-  lint(a, "{-C}%s{0}", s_name(b->xid));
-  if (b->traits) {
-    lint_space(a);
-    lint_traits(a, b->traits);
+  for(uint32_t i = 0; i < b->len; i++) {
+    Specialized *spec = mp_vector_at(b, Specialized, i);
+    check_pos(a, &spec->pos->first);
+    lint(a, "{-C}%s{0}", s_name(spec->xid));
+    if (spec->traits) {
+      lint_space(a);
+      lint_traits(a, spec->traits);
   }
-  check_pos(a, &b->pos->last);
-  NEXT(a, b, lint_specialized_list)
+  check_pos(a, &spec->pos->last);
+  }
 }
 
 ANN static void _lint_type_list(Lint *a, Type_List b) {
-  lint_type_decl(a, b->td);
-  NEXT(a, b, _lint_type_list);
+  for(uint32_t i = 0; i < b->len; i++) {
+    Type_Decl *td = *mp_vector_at(b, Type_Decl*, i);
+    lint_type_decl(a, td);
+  }
 }
 
 ANN static inline void lint_init_tmpl(Lint *a) { lint(a, "{-}:[{0}"); }
@@ -425,8 +431,10 @@ ANN static void lint_var_decl(Lint *a, Var_Decl b) {
 }
 
 ANN static void lint_var_decl_list(Lint *a, Var_Decl_List b) {
-  lint_var_decl(a, b->self);
-  NEXT(a, b, lint_var_decl_list);
+  for(uint32_t i = 0; i < b->len; i++) {
+    Var_Decl vd = mp_vector_at(b, struct Var_Decl_, i);
+    lint_var_decl(a, vd);
+  }
 }
 
 ANN static void lint_exp_decl(Lint *a, Exp_Decl *b) {
@@ -552,10 +560,11 @@ ANN static void lint_exp_dot(Lint *a, Exp_Dot *b) {
 }
 
 ANN static void lint_lambda_list(Lint *a, Arg_List b) {
-  do {
-    lint_symbol(a, b->var_decl->xid);
+  for(uint32_t i = 0; i < b->len; i++) {
+    Arg *arg = mp_vector_at(b, Arg, i);
+    lint_symbol(a, arg->var_decl.xid);
     lint_space(a);
-  } while ((b = b->next));
+  }
 }
 
 ANN static void lint_exp_lambda(Lint *a, Exp_Lambda *b) {
@@ -637,16 +646,18 @@ ANN static void lint_stmt_retry(Lint *a, Stmt_Exp b) {
 }
 
 ANN static void lint_handler_list(Lint *a, Handler_List b) {
-  lint(a, "{+M}handle{0}");
-  lint_space(a);
-  if (b->xid) {
-    lint_effect(a, b->xid);
+  for(uint32_t i = 0; i < b->len; i++) {
+    Handler *handler = mp_vector_at(b, Handler, i);
+    lint(a, "{+M}handle{0}");
     lint_space(a);
+    if (handler->xid) {
+      lint_effect(a, handler->xid);
+      lint_space(a);
+    }
+    const uint indent = a->skip_indent++;
+    lint_stmt(a, handler->stmt);
+    a->skip_indent = indent;
   }
-  const uint indent = a->skip_indent++;
-  lint_stmt(a, b->stmt);
-  a->skip_indent = indent;
-  if (b->next) lint_handler_list(a, b->next);
 }
 
 ANN static void lint_stmt_try(Lint *a, Stmt_Try b) {
@@ -832,11 +843,13 @@ ANN static void lint_stmt_return(Lint *a, Stmt_Exp b) {
 }
 
 ANN static void lint_case_list(Lint *a, Stmt_List b) {
+/*
   lint_stmt_case(a, &b->stmt->d.stmt_match);
   if (b->next) {
     lint_nl(a);
     lint_case_list(a, b->next);
   }
+*/
 }
 
 ANN static void lint_stmt_match(Lint *a, Stmt_Match b) {
@@ -871,12 +884,14 @@ ANN static void lint_stmt_case(Lint *a, Stmt_Match b) {
   }
   //  lint_space(a);
   lint(a, "{-}:{0}");
+/*
   if (b->list->next)
     INDENT(a, lint_stmt_list(a, b->list))
   else {
     lint_space(a);
     lint_stmt_func[b->list->stmt->stmt_type](a, &b->list->stmt->d);
   }
+*/
 }
 
 static const char *pp[] = {"!",     "include", "define", "pragma", "undef",
@@ -916,34 +931,40 @@ ANN static void lint_stmt(Lint *a, Stmt b) {
 }
 
 ANN static void lint_arg_list(Lint *a, Arg_List b) {
-  if (b->td) {
-    lint_type_decl(a, b->td);
-    if (b->var_decl->xid) lint_space(a);
+  for(uint32_t i = 0; i < b->len; i++) {
+    Arg *arg = mp_vector_at(b, Arg, i);
+    if (arg->td) {
+      lint_type_decl(a, arg->td);
+      if (arg->var_decl.xid) lint_space(a);
+    }
+    lint_var_decl(a, &arg->var_decl);
+    if (arg->exp) {
+      lint_space(a);
+      lint(a, ":");
+      lint_space(a);
+      lint_exp(a, arg->exp);
+    }
   }
-  lint_var_decl(a, b->var_decl);
-  if (b->exp) {
-    lint_space(a);
-    lint(a, ":");
-    lint_space(a);
-    lint_exp(a, b->exp);
-  }
-  NEXT(a, b, lint_arg_list);
 }
 
 ANN static void lint_union_list(Lint *a, Union_List b) {
-  lint_indent(a);
-  lint_type_decl(a, b->td);
-  lint_space(a);
-  lint_symbol(a, b->xid);
-  lint_sc(a);
-  lint_nl(a);
-  if (b->next) lint_union_list(a, b->next);
+  for(uint32_t i = 0; i < b->len; i++) {
+    Union_Member *um = mp_vector_at(b, Union_Member, i);
+    lint_indent(a);
+    lint_type_decl(a, um->td);
+    lint_space(a);
+    lint_var_decl(a, &um->vd);
+    lint_sc(a);
+    lint_nl(a);
+  }
 }
 
 ANN static void lint_stmt_list(Lint *a, Stmt_List b) {
-  if (b->stmt->stmt_type != ae_stmt_exp || b->stmt->d.stmt_exp.val)
-    lint_stmt(a, b->stmt);
-  if (b->next) lint_stmt_list(a, b->next);
+  for(uint32_t i = 0; i < b->len; i++) {
+    Stmt stmt = mp_vector_at(b, struct Stmt_, i);
+    if (stmt->stmt_type != ae_stmt_exp || stmt->d.stmt_exp.val)
+      lint_stmt(a, stmt);
+  }
 }
 
 ANN static void lint_func_base(Lint *a, Func_Base *b) {
@@ -1132,9 +1153,11 @@ ANN static void lint_section(Lint *a, Section *b) {
 }
 
 ANN void lint_ast(Lint *a, Ast b) {
-  lint_section(a, b->section);
-  if (b->next) {
-    lint_nl(a);
-    lint_ast(a, b->next);
+  const m_uint sz = b->len;
+  for(m_uint i = 0; i < sz; i++) {
+    const m_uint offset = i * sizeof(Section);
+    Section *section = (Section*)(b->ptr + offset);
+    lint_section(a, section);
+    if(i < sz -1) lint_nl(a);
   }
 }

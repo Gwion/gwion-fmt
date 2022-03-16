@@ -13,28 +13,26 @@ ANN static inline void lint_file(Lint *a, const m_str name) {
 ANN static int lint_gw(struct AstGetter_ *arg, struct LintState *ls) {
   const Ast ast = parse(arg);
   if (!ast) return 1;
-  if (ast) {
-    Lint l = {.mp = arg->st->p, .ls = ls, .line = 1, .mark = ls->mark};
-    if (!ls->pretty) {
-      if (l.ls->header) {
-        lint(&l, "       {N}┏━━━{0} ");
-        lint_file(&l, arg->name);
-        lint(&l, "{0}  {-}     {N}┃{0}");
-      }
-      lint_nl(&l);
-    } else if (l.ls->header) {
-      lint(&l, "\n");
+  Lint l = {.mp = arg->st->p, .ls = ls, .line = 1, .mark = ls->mark};
+  if (!ls->pretty) {
+    if (l.ls->header) {
+      lint(&l, "       {N}┏━━━{0} ");
       lint_file(&l, arg->name);
+      lint(&l, "{0}  {-}     {N}┃{0}");
     }
-    lint_ast(&l, ast);
-    free_ast(l.mp, ast);
-    ls->mark = 0;
-    if (!ls->pretty) {
-      lint(&l, "\b\b\b\b\b\b\b");
-      if (l.ls->header) {
-        lint(&l, "{0}{-}     {N}┃{0}\n");
-        lint(&l, "       {N}┗━━━{0}\n");
-      }
+    lint_nl(&l);
+  } else if (l.ls->header) {
+    lint(&l, "\n");
+    lint_file(&l, arg->name);
+  }
+  lint_ast(&l, ast);
+  free_ast(l.mp, ast);
+  ls->mark = 0;
+  if (!ls->pretty) {
+    lint(&l, "\b\b\b\b\b\b\b");
+    if (l.ls->header) {
+      lint(&l, "{0}{-}     {N}┃{0}\n");
+      lint(&l, "       {N}┗━━━{0}\n");
     }
   }
   return 0;
