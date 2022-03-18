@@ -1155,8 +1155,7 @@ ANN static void lint_section(Lint *a, Section *b) {
 ANN void lint_ast(Lint *a, Ast b) {
   const m_uint sz = b->len;
   for(m_uint i = 0; i < sz; i++) {
-    const m_uint offset = i * sizeof(Section);
-    Section *section = (Section*)(b->ptr + offset);
+    Section *section = mp_vector_at(b, Section, i);
     lint_section(a, section);
     if(i < sz -1) lint_nl(a);
   }
