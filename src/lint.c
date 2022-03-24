@@ -191,6 +191,10 @@ ANN static void lint_id_list(Lint *a, ID_List b) {
     check_pos(a, &b->pos->first);
     Symbol xid = *mp_vector_at(b, Symbol, i);
     lint_symbol(a, xid);
+    if(i < b->len - 1) {
+      lint_comma(a);
+      lint_space(a);
+    }
     check_pos(a, &b->pos->last);
   }
 }
@@ -843,13 +847,11 @@ ANN static void lint_stmt_return(Lint *a, Stmt_Exp b) {
 }
 
 ANN static void lint_case_list(Lint *a, Stmt_List b) {
-/*
-  lint_stmt_case(a, &b->stmt->d.stmt_match);
-  if (b->next) {
-    lint_nl(a);
-    lint_case_list(a, b->next);
+  for(uint32_t i = 0; i < b->len; i++) {
+    const Stmt stmt = mp_vector_at(b, struct Stmt_, i);
+    lint_stmt_case(a, &stmt->d.stmt_match);
+    if(i < b->len - 1) lint_nl(a);
   }
-*/
 }
 
 ANN static void lint_stmt_match(Lint *a, Stmt_Match b) {
@@ -872,26 +874,26 @@ ANN static void lint_stmt_match(Lint *a, Stmt_Match b) {
 }
 
 ANN static void lint_stmt_case(Lint *a, Stmt_Match b) {
-  lint_indent(a);
-  lint(a, "{+M}case{0}");
-  lint_space(a);
-  lint_exp(a, b->cond);
-  if (b->when) {
+  //for(uint32_t i = 0; i < b->len; i++) {
+    lint_indent(a);
+    lint(a, "{+M}case{0}");
     lint_space(a);
-    lint(a, "{+M}when{0}");
-    lint_space(a);
-    lint_exp(a, b->when);
-  }
-  //  lint_space(a);
-  lint(a, "{-}:{0}");
-/*
-  if (b->list->next)
-    INDENT(a, lint_stmt_list(a, b->list))
-  else {
-    lint_space(a);
-    lint_stmt_func[b->list->stmt->stmt_type](a, &b->list->stmt->d);
-  }
-*/
+    lint_exp(a, b->cond);
+    if (b->when) {
+      lint_space(a);
+      lint(a, "{+M}when{0}");
+      lint_space(a);
+      lint_exp(a, b->when);
+    }
+    //  lint_space(a);
+    lint(a, "{-}:{0}");
+    if (b->list->len > 1)
+      INDENT(a, lint_stmt_list(a, b->list))
+    else {
+      lint_space(a);
+      const Stmt stmt = mp_vector_at(b->list, struct Stmt_, 0);
+      lint_stmt_func[stmt->stmt_type](a, &stmt->d);
+    }
 }
 
 static const char *pp[] = {"!",     "include", "define", "pragma", "undef",
@@ -943,6 +945,10 @@ ANN static void lint_arg_list(Lint *a, Arg_List b) {
       lint(a, ":");
       lint_space(a);
       lint_exp(a, arg->exp);
+    }
+    if(i < b->len - 1) {
+      lint_comma(a);
+      lint_space(a);
     }
   }
 }
