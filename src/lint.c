@@ -422,6 +422,12 @@ ANN static void lint_prim_nil(Lint *a, void *b) {
   lint_rparen(a);
 }
 
+ANN void lint_prim_locale(Lint *a, Symbol *b) {
+  lint(a, "`");
+  lint_symbol(a, *b);
+  lint(a, "`");
+}
+
 DECL_PRIM_FUNC(lint, void, Lint *)
 ANN static void lint_prim(Lint *a, Exp_Primary *b) {
   lint_prim_func[b->prim_type](a, &b->d);
