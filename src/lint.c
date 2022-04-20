@@ -139,23 +139,26 @@ ANN static void lint_prim_interp(Lint *a, Exp *b);
 
 #define _FLAG(a, b) (((a)&ae_flag_##b) == (ae_flag_##b))
 ANN static void lint_flag(Lint *a, ae_flag b) {
-  int state = 0;
-  if (_FLAG(b, private) && (state = 1))
+  bool state = true;
+  if (_FLAG(b, private))
     lint(a, "{-/G}private{0}");
-  else if (_FLAG(b, protect) && (state = 1))
+  else if (_FLAG(b, protect))
     lint(a, "{-/G}protect{0}");
+  else state = false;
   if (state) lint_space(a);
-  state = 0;
-  if (_FLAG(b, static) && (state = 1))
+  state = true;
+  if (_FLAG(b, static))
     lint(a, "{-G}static{0}");
-  else if (_FLAG(b, global) && (state = 1))
+  else if (_FLAG(b, global))
     lint(a, "{-G}global{0}");
+  else state = false;
   if (state) lint_space(a);
-  state = 0;
-  if (_FLAG(b, abstract) && (state = 1))
+  state = true;
+  if (_FLAG(b, abstract))
     lint(a, "{-G}abstract{0}");
-  else if (_FLAG(b, final) && (state = 1))
+  else if (_FLAG(b, final))
     lint(a, "{-G}final{0}");
+  else state = false;
   if (state) lint_space(a);
 }
 #define lint_flag(a, b) lint_flag(a, b->flag)
