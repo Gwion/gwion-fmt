@@ -329,7 +329,7 @@ ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
     }
     lint_type_decl(a, fptr->base->td);
     lint_lparen(a);
-    if (fptr->base->args) lint_arg_list(a, fptr->base->args);
+    if (fptr->base->args) lint_arg_list(a, fptr->base->args, 0);
     if (fbflag(fptr->base, fbflag_variadic)) {
       if (fptr->base->args) {
         lint_comma(a);
@@ -906,13 +906,20 @@ ANN static void lint_stmt_case(Lint *a, Stmt_Match b) {
 }
 
 static const char *pp[] = {"!",     "include", "define", "pragma", "undef",
-                           "ifdef", "ifndef",  "else",   "endif",  "import"};
+                           "ifdef", "ifndef",  "else",   "endif",  "import", "locale"};
 
 static const char *pp_color[] = {"{-}", "{Y}", "{G}", "{R}", "{W}",
-                                 "{B}", "{B}", "{B}", "{B}", "{+C}"};
+                                 "{B}", "{B}", "{B}", "{B}", "{+C}", "{+C}"};
 
 ANN static void lint_stmt_pp(Lint *a, Stmt_PP b) {
   if (b->pp_type == ae_pp_nl) return;
+  if (b->pp_type == ae_pp_locale) {
+    lint(a, "{M/}#%s{0} %s%s{0}", pp[b->pp_type], pp_color[b->pp_type]);
+    lint_symbol(a, b->xid);
+    lint_space(a);
+    if(b->exp) lint_exp(a, b->exp);
+    return;
+  }
   if (b->pp_type != ae_pp_comment) {
     lint(a, "{M/}#%s{0} %s%s{0}", pp[b->pp_type], pp_color[b->pp_type],
          b->data ?: "");
@@ -941,8 +948,8 @@ ANN static void lint_stmt(Lint *a, Stmt b) {
   check_pos(a, &b->pos->last);
 }
 
-ANN static void lint_arg_list(Lint *a, Arg_List b) {
-  for(uint32_t i = 0; i < b->len; i++) {
+ANN static void lint_arg_list(Lint *a, Arg_List b, const bool locale) {
+  for(uint32_t i = locale; i < b->len; i++) {
     Arg *arg = mp_vector_at(b, Arg, i);
     if (arg->td) {
       lint_type_decl(a, arg->td);
@@ -991,7 +998,7 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
     lint_space(a);
     if (b->tmpl) lint_tmpl(a, b->tmpl);
   }
-  if (b->td) {
+  if (b->td && !fbflag(b, fbflag_locale)) {
     lint_type_decl(a, b->td);
     lint_space(a);
   }
@@ -1002,7 +1009,7 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
   if (fbflag(b, fbflag_op))
     lint_space(a);
   lint_lparen(a);
-  if (b->args) lint_arg_list(a, b->args);
+  if (b->args) lint_arg_list(a, b->args, fbflag(b, fbflag_locale));
   if (fbflag(b, fbflag_variadic)) {
     if (b->args) {
       lint_comma(a);
@@ -1016,7 +1023,9 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
 
 ANN void lint_func_def(Lint *a, Func_Def b) {
   check_pos(a, &b->pos->first);
-  if (!fbflag(b->base, fbflag_op) && strcmp(s_name(b->base->xid), "new"))
+  if(fbflag(b->base, fbflag_locale))
+    lint(a, "{+C}locale{0}");
+  else if(fbflag(b->base, fbflag_op) && strcmp(s_name(b->base->xid), "new"))
     lint(a, "{+C}fun{0}");
   else
     lint(a, "{+C}operator{0}");
