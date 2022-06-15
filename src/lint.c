@@ -1025,7 +1025,7 @@ ANN void lint_func_def(Lint *a, Func_Def b) {
   check_pos(a, &b->pos->first);
   if(fbflag(b->base, fbflag_locale))
     lint(a, "{+C}locale{0}");
-  else if(fbflag(b->base, fbflag_op) && strcmp(s_name(b->base->xid), "new"))
+  else if(!fbflag(b->base, fbflag_op) && strcmp(s_name(b->base->xid), "new"))
     lint(a, "{+C}fun{0}");
   else
     lint(a, "{+C}operator{0}");
@@ -1147,9 +1147,10 @@ ANN static void lint_extend_def(Lint *a, Extend_Def b) {
   lint_space(a);
   lint_type_decl(a, b->td);
   lint_space(a);
-  lint_lbrace(a);
-  INDENT(a, lint_ast(a, b->body))
-  lint_rbrace(a);
+  lint(a, ":");
+  lint_space(a);
+  lint_id_list(a, b->traits);
+  lint_sc(a);
   lint_nl(a);
 }
 
@@ -1158,13 +1159,13 @@ ANN static void lint_trait_def(Lint *a, Trait_Def b) {
   lint_space(a);
   lint_symbol(a, b->xid);
   lint_space(a);
-  lint_lbrace(a);
   if (b->body) {
+    lint_lbrace(a);
     lint_nl(a);
     INDENT(a, lint_ast(a, b->body))
     lint_indent(a);
-  }
-  lint_rbrace(a);
+    lint_rbrace(a);
+  } else lint_sc(a);
   lint_nl(a);
 }
 
