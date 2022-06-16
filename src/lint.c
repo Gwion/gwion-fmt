@@ -436,18 +436,10 @@ ANN static void lint_prim(Lint *a, Exp_Primary *b) {
   lint_prim_func[b->prim_type](a, &b->d);
 }
 
-ANN static void lint_var_decl(Lint *a, Var_Decl b) {
+ANN static void lint_var_decl(Lint *a, Var_Decl *b) {
   check_pos(a, &b->pos->first);
   if (b->xid) lint(a, "{W+}%s{0}", s_name(b->xid));
-  if (b->array) lint_array_sub2(a, b->array);
   check_pos(a, &b->pos->last);
-}
-
-ANN static void lint_var_decl_list(Lint *a, Var_Decl_List b) {
-  for(uint32_t i = 0; i < b->len; i++) {
-    Var_Decl vd = mp_vector_at(b, struct Var_Decl_, i);
-    lint_var_decl(a, vd);
-  }
 }
 
 ANN static void lint_exp_decl(Lint *a, Exp_Decl *b) {
@@ -459,7 +451,7 @@ ANN static void lint_exp_decl(Lint *a, Exp_Decl *b) {
     lint_type_decl(a, b->td);
     lint_space(a);
   }
-  lint_var_decl_list(a, b->list);
+  lint_var_decl(a, &b->vd);
 }
 
 ANN static void lint_exp_td(Lint *a, Type_Decl *b) {
