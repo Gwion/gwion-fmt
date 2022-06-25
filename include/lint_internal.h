@@ -37,7 +37,6 @@ ANN static void lint_stmt_each(Lint *a, Stmt_Each b);
 ANN static void lint_stmt_loop(Lint *a, Stmt_Loop b);
 ANN static void lint_stmt_if(Lint *a, Stmt_If b);
 ANN static void lint_stmt_code(Lint *a, Stmt_Code b);
-ANN static void lint_stmt_varloop(Lint *a, Stmt_VarLoop b);
 ANN static void lint_stmt_break(Lint *a, Stmt_Index b);
 ANN static void lint_stmt_continue(Lint *a, Stmt_Index b);
 ANN static void lint_stmt_return(Lint *a, Stmt_Exp b);

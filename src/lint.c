@@ -338,13 +338,6 @@ ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
     lint_type_decl(a, fptr->base->td);
     lint_lparen(a);
     if (fptr->base->args) lint_arg_list(a, fptr->base->args, 0);
-    if (fbflag(fptr->base, fbflag_variadic)) {
-      if (fptr->base->args) {
-        lint_comma(a);
-        lint_space(a);
-      }
-      lint(a, "...");
-    }
     lint_rparen(a);
     if (fptr->base->effects.ptr) lint_effects(a, &fptr->base->effects);
     lint_rparen(a);
@@ -840,19 +833,6 @@ ANN static void lint_stmt_code(Lint *a, Stmt_Code b) {
   lint_rbrace(a);
 }
 
-ANN static void lint_stmt_varloop(Lint *a, Stmt_VarLoop b) {
-  lint(a, "{+M}varloop{0}");
-  lint_space(a);
-  lint_exp(a, b->exp);
-  if (b->body->stmt_type != ae_stmt_code) {
-    lint_nl(a);
-    INDENT(a, lint_stmt(a, b->body))
-  } else {
-    lint_space(a);
-    lint_stmt_code(a, &b->body->d.stmt_code);
-  }
-}
-
 ANN static void lint_stmt_break(Lint *a, Stmt_Index b) {
   lint(a, "{+M}break{0}");
   if (b->idx) {
@@ -1035,13 +1015,6 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
     lint_space(a);
   lint_lparen(a);
   if (b->args) lint_arg_list(a, b->args, fbflag(b, fbflag_locale));
-  if (fbflag(b, fbflag_variadic)) {
-    if (b->args) {
-      lint_comma(a);
-      lint_space(a);
-    }
-    lint(a, "...");
-  }
   lint_rparen(a);
   if (b->effects.ptr) lint_effects(a, &b->effects);
 }
