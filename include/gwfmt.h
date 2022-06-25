@@ -15,6 +15,7 @@ struct LintState {
 
 typedef struct {
   MemPool           mp;
+  SymTable          *st; // only for spread
   Map               macro;
   struct LintState *ls;
   //  struct pos_t pos;

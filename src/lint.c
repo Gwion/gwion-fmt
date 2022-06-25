@@ -217,8 +217,12 @@ ANN static void lint_specialized_list(Lint *a, Specialized_List b) {
     if (spec->traits) {
       lint_space(a);
       lint_traits(a, spec->traits);
-  }
-  check_pos(a, &spec->pos->last);
+    }
+    if(i < b->len - 1) {
+      lint_comma(a);
+      lint_space(a);
+    }
+    check_pos(a, &spec->pos->last);
   }
 }
 
@@ -226,6 +230,10 @@ ANN static void _lint_type_list(Lint *a, Type_List b) {
   for(uint32_t i = 0; i < b->len; i++) {
     Type_Decl *td = *mp_vector_at(b, Type_Decl*, i);
     lint_type_decl(a, td);
+    if(i < b->len - 1) {
+      lint_comma(a);
+      lint_space(a);
+    }
   }
 }
 
@@ -240,7 +248,7 @@ ANN static void lint_type_list(Lint *a, Type_List b) {
 }
 
 ANN static void lint_tmpl(Lint *a, Tmpl *b) {
-  if (b->list) {
+  if (!b->call) {
     lint_init_tmpl(a);
     lint_space(a);
     lint_specialized_list(a, b->list);
@@ -676,6 +684,31 @@ ANN static void lint_stmt_try(Lint *a, Stmt_Try b) {
 // = indent;
   a->skip_indent = indent;
   lint_handler_list(a, b->handler);
+}
+
+ANN static void lint_stmt_spread(Lint *a, Spread_Def b) {
+  lint(a, "...");
+  lint_space(a);
+  lint_symbol(a, b->xid);
+  lint_space(a);
+  lint(a, ":");
+  lint_space(a);
+  lint_id_list(a, b->list);
+  lint_space(a);
+  lint_lbrace(a);
+  lint_nl(a);
+  a->indent++;
+  struct PPArg_ ppa = {};
+  pparg_ini(a->mp, &ppa);
+  FILE *file = fmemopen(b->data, strlen(b->data), "r");
+  struct AstGetter_ arg = {"", file, a->st, .ppa = &ppa};
+  Ast tmp =    parse(&arg);
+  lint_ast(a, tmp);
+  pparg_end(&ppa);
+  a->indent--;
+  lint_indent(a);
+  lint_rbrace(a);
+  lint_nl(a);
 }
 
 DECL_STMT_FUNC(lint, void, Lint *)
