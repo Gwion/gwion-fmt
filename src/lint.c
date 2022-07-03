@@ -421,7 +421,7 @@ ANN static void lint_prim_typeof(Lint *a, Exp *b) {
 
 ANN static void lint_prim_char(Lint *a, m_str *b) { lint(a, "{M}'%s'{0}", *b); }
 
-ANN static void lint_prim_nil(Lint *a, void *b) {
+ANN static void lint_prim_nil(Lint *a, void *b NUSED) {
   lint_lparen(a);
   lint_rparen(a);
 }
@@ -647,7 +647,7 @@ ANN static void lint_stmt_exp(Lint *a, Stmt_Exp b) {
   lint_sc(a);
 }
 
-ANN static void lint_stmt_retry(Lint *a, Stmt_Exp b) {
+ANN static void lint_stmt_retry(Lint *a, Stmt_Exp b NUSED) {
   lint(a, "{+M}retry{0};");
 }
 

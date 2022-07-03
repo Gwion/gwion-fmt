@@ -62,7 +62,7 @@ ANN static int lint_unpy(struct AstGetter_ *arg, struct LintState *ls) {
     ret                       = lint_gw(&new_arg, ls);
     fclose(f);
   } else
-    printf(ptr);
+    printf("%s", ptr);
   free(ptr);
   return ret;
 }
