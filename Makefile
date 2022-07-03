@@ -41,17 +41,17 @@ endif
 
 all: ${PRG}
 
-${PRG}: src/${PRG}.o src/unpy.o libgwion-fmt.a
+${PRG}: src/${PRG}.o src/unpy.o libgwion_fmt.a
 	${CC} ${CFLAGS} $? -Iinclude -lgwion_ast -lgwion_util ${LDFLAGS} -lpthread -lm -o ${PRG}
 
-libgwion-fmt.a: src/lint.o
+libgwion_fmt.a: src/lint.o
 	${AR} ${AR_OPT}
 
 src/unpy.c: src/unpy.l
 	${LEX} src/unpy.l
 
 clean:
-	rm -rf src/*.o ${PRG} libgwion-fmt.a
+	rm -rf src/*.o ${PRG} libgwion_fmt.a
 
 install: all
 	install ${PRG} ${PREFIX}/bin
