@@ -20,6 +20,7 @@ typedef struct {
   struct LintState *ls;
   //  struct pos_t pos;
   unsigned int   indent;
+  unsigned int   nindent;
   unsigned int   skip_indent;
   unsigned int   nl;
   enum char_type last;

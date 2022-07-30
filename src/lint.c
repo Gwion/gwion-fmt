@@ -104,8 +104,8 @@ ANN void lint_indent(Lint *a) {
     return;
   }
   for (unsigned int i = 0; i < a->indent; ++i) {
-    lint_space(a);
-    lint_space(a);
+    for (unsigned int j = 0; j < a->nindent; ++j)
+      lint_space(a);
   }
 }
 /*
@@ -450,6 +450,7 @@ ANN static void lint_exp_decl(Lint *a, Exp_Decl *b) {
       lint_space(a);
     }
     lint_type_decl(a, b->td);
+    if(b->args) paren_exp(a, b->args);
     lint_space(a);
   }
   lint_var_decl(a, &b->vd);
@@ -696,7 +697,7 @@ ANN static void lint_stmt_spread(Lint *a, Spread_Def b) {
   FILE *file = fmemopen(b->data, strlen(b->data), "r");
   struct AstGetter_ arg = {"", file, a->st, .ppa = &ppa};
   Ast tmp =    parse(&arg);
-  lint_ast(a, tmp);
+  if(tmp) lint_ast(a, tmp);
   pparg_end(&ppa);
   a->indent--;
   lint_indent(a);
@@ -916,25 +917,33 @@ static const char *pp[] = {"!",     "include", "define", "pragma", "undef",
 static const char *pp_color[] = {"{-}", "{Y}", "{G}", "{R}", "{W}",
                                  "{B}", "{B}", "{B}", "{B}", "{+C}", "{+C}"};
 
+ANN static inline m_str strip(m_str str) {
+  while(isspace(*str))str++;
+  return str;
+}
+
 ANN static void lint_stmt_pp(Lint *a, Stmt_PP b) {
   if (b->pp_type == ae_pp_nl) return;
   if (b->pp_type == ae_pp_locale) {
-    lint(a, "{M/}#%s{0} %s%s{0}", pp[b->pp_type], pp_color[b->pp_type]);
+    lint(a, "{M/}#%s{0} %s{0}", pp[b->pp_type], pp_color[b->pp_type]);
     lint_symbol(a, b->xid);
     lint_space(a);
     if(b->exp) lint_exp(a, b->exp);
     return;
   }
-  if (b->pp_type != ae_pp_comment) {
+  if (b->pp_type == ae_pp_include) {
+    lint(a, "{M/}#%s{0} %s<%s>{0}", pp[b->pp_type], pp_color[b->pp_type],
+         b->data ?: "");
+  } else if (b->pp_type != ae_pp_comment) {
     lint(a, "{M/}#%s{0} %s%s{0}", pp[b->pp_type], pp_color[b->pp_type],
          b->data ?: "");
   } else {
     lint_indent(a);
 //  a->skip_indent = indent;
-    if (!b->data || (*b->data != '-' && *b->data != '+'))
-      lint(a, "{/-}#%s%s{0}", pp[b->pp_type], b->data ?: "");
-    else
-      lint(a, "{/+}#!%s{0}", b->data ?: "");
+//    if (!b->data || (*b->data != '-' && *b->data != '+'))
+//      lint(a, "{/-}#%s%s{0}", pp[b->pp_type], b->data ?: "");
+//    else
+      lint(a, "{-/}#!%s{0}", b->data ?: "");
   }
 }
 
@@ -1065,7 +1074,7 @@ ANN void lint_class_def(Lint *a, Class_Def b) {
     if (b->body) {
       lint_nl(a);
       INDENT(a, lint_ast(a, b->body))
-//      lint_indent(a);
+      lint_indent(a);
     }
     lint_rbrace(a);
     check_pos(a, &b->pos->last);

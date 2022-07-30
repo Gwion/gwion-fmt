@@ -13,7 +13,7 @@ ANN static inline void lint_file(Lint *a, const m_str name) {
 ANN static int lint_gw(struct AstGetter_ *arg, struct LintState *ls) {
   const Ast ast = parse(arg);
   if (!ast) return 1;
-  Lint l = {.mp = arg->st->p, .st = arg->st, .ls = ls, .line = 1, .mark = ls->mark};
+  Lint l = {.mp = arg->st->p, .st = arg->st, .ls = ls, .line = 1, .mark = ls->mark, .nindent = 4};
   if (!ls->pretty) {
     if (l.ls->header) {
       lint(&l, "       {N}┏━━━{0} ");
