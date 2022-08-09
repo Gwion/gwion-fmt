@@ -578,9 +578,19 @@ ANN static void lint_exp_lambda(Lint *a, Exp_Lambda *b) {
   lint(a, "\\");
   if (b->def->base->args) {
     lint_lambda_list(a, b->def->base->args);
-    lint_space(a);
   }
-  if (b->def->d.code) lint_stmt_code(a, &b->def->d.code->d.stmt_code);
+  if (b->def->d.code) {
+    Stmt_Code code = &b->def->d.code->d.stmt_code;
+    if(mp_vector_len(code->stmt_list) != 1)
+      lint_stmt_code(a, code);
+    else {
+      lint_lbrace(a);
+      lint_space(a);
+      lint_exp(a, mp_vector_at(code->stmt_list, struct Stmt_, 0)->d.stmt_exp.val);
+      lint_space(a);
+      lint_rbrace(a);
+    }
+  }
 }
 
 DECL_EXP_FUNC(lint, void, Lint *)
