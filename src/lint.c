@@ -501,7 +501,7 @@ ANN static void lint_exp_unary(Lint *a, Exp_Unary *b) {
       lint_rparen(a);
     }
   } else if (b->unary_type == unary_code)
-    lint_stmt_code(a, &b->code->d.stmt_code);
+    lint_stmt_list(a, b->code);
 }
 
 ANN static void lint_exp_cast(Lint *a, Exp_Cast *b) {
@@ -580,13 +580,13 @@ ANN static void lint_exp_lambda(Lint *a, Exp_Lambda *b) {
     lint_lambda_list(a, b->def->base->args);
   }
   if (b->def->d.code) {
-    Stmt_Code code = &b->def->d.code->d.stmt_code;
-    if(mp_vector_len(code->stmt_list) != 1)
-      lint_stmt_code(a, code);
+    Stmt_List code = b->def->d.code;
+    if(mp_vector_len(code) != 1)
+      lint_stmt_list(a, code); // brackets?
     else {
       lint_lbrace(a);
       lint_space(a);
-      lint_exp(a, mp_vector_at(code->stmt_list, struct Stmt_, 0)->d.stmt_exp.val);
+      lint_exp(a, mp_vector_at(code, struct Stmt_, 0)->d.stmt_exp.val);
       lint_space(a);
       lint_rbrace(a);
     }
@@ -1056,7 +1056,7 @@ ANN void lint_func_def(Lint *a, Func_Def b) {
   lint_space(a);
   a->skip_indent += 1;
   if (!GET_FLAG(b->base, abstract) && b->d.code)
-    lint_stmt(a, b->d.code);
+    lint_stmt_list(a, b->d.code); // brackets?
   else {
     lint_sc(a);
   }
