@@ -1,25 +1,25 @@
 PREFIX ?= /usr/local
 PRG := gwfmt
 
+CFLAGS += -O3
+
 # Warnings
 CFLAGS += -Wall -Wextra -Wno-unused
 
 # Includes
 CFLAGS += -I../util/include
 CFLAGS += -I../ast/include
-CFLAGS += -I../util/libtermcolor/include
 CFLAGS += -Iinclude
 
 # Libraries
 LDFLAGS += -L../util
 LDFLAGS += -L../ast
-LDFLAGS += -L../util/libtermcolor
 LDFLAGS += -L../ast/libprettyerr
 
 #CFLAGS += -flto -Ofast
 #LDFLAGS += -flto
 
-LDFLAGS += -lprettyerr -ltermcolor
+LDFLAGS += -lprettyerr
 
 ifneq ($(shell uname), Darwin)
 LDFLAGS += -static
