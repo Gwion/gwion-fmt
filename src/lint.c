@@ -43,6 +43,7 @@ ANN void lint(Lint *a, const m_str fmt, ...) {
   printf(buf);
   if (a->need_space && a->last != cht_op && a->last == cht(buf[0])) printf(" ");
   a->last = cht(buf[n - 1]);
+  mp_free2(a->mp, n + 1, buf);
   va_end(ap);
   a->need_space = 0;
   //  }
