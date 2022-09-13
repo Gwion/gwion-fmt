@@ -36,7 +36,7 @@ ANN void lint(Lint *a, const m_str fmt, ...) {
   int n = vsnprintf(NULL, 0, fmt, ap);
   va_end(ap);
 
-  char buf[n + 1];
+  char * buf = mp_malloc2(a->mp, n + 1);
   va_start(ap, fmt);
 
   vsprintf(buf, fmt, ap);
