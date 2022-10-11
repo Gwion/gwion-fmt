@@ -1187,6 +1187,17 @@ ANN static void lint_trait_def(Lint *a, Trait_Def b) {
   lint_nl(a);
 }
 
+ANN static void lint_prim_def(Lint *a, Prim_Def b) {
+  lint(a, "{+C}primitive{0}");
+  lint_space(a);
+  lint_flag(a, b);
+  lint(a, "{+W}%s{0}", s_name(b->name));
+  lint_space(a);
+  lint_prim_num(a, (m_int*)&b->size);
+  lint_sc(a);
+  lint_nl(a);
+}
+
 DECL_SECTION_FUNC(lint, void, Lint *)
 ANN static void lint_section(Lint *a, Section *b) {
   //  check_pos(a, &b->pos->first);
