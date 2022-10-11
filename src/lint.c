@@ -1055,10 +1055,13 @@ ANN void lint_func_def(Lint *a, Func_Def b) {
     return;
   }
   lint_space(a);
-  a->skip_indent += 1;
-  if (!GET_FLAG(b->base, abstract) && b->d.code)
-    lint_stmt_list(a, b->d.code); // brackets?
-  else {
+  if (!GET_FLAG(b->base, abstract) && b->d.code) {
+    lint_lbrace(a);
+    lint_nl(a);
+    INDENT(a, lint_stmt_list(a, b->d.code));
+    lint_indent(a);
+    lint_rbrace(a);
+  } else {
     lint_sc(a);
   }
   lint_nl(a);
