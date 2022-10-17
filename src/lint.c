@@ -961,7 +961,9 @@ ANN static void lint_stmt_pp(Lint *a, Stmt_PP b) {
 ANN static void lint_stmt_defer(Lint *a, Stmt_Defer b) {
   lint(a, "{+M}defer{0}");
   lint_space(a);
+  a->skip_indent++;
   lint_stmt(a, b->stmt);
+//  a->skip_indent--;
 }
 
 ANN static void lint_stmt(Lint *a, Stmt b) {
@@ -1190,7 +1192,7 @@ ANN static void lint_trait_def(Lint *a, Trait_Def b) {
   lint_nl(a);
 }
 
-ANN static void lint_prim_def(Lint *a, Prim_Def b) {
+ANN void lint_prim_def(Lint *a, Prim_Def b) {
   lint(a, "{+C}primitive{0}");
   lint_space(a);
   lint_flag(a, b);

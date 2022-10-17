@@ -47,4 +47,5 @@ ANN void lint_enum_def(Lint *a, Enum_Def b);
 ANN void lint_union_def(Lint *a, Union_Def b);
 ANN void lint_fptr_def(Lint *a, Fptr_Def b);
 ANN void lint_type_def(Lint *a, Type_Def b);
+ANN void lint_prim_def(Lint *a, Prim_Def b);
 ANN void lint_ast(Lint *a, Ast b);
