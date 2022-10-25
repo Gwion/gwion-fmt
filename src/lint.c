@@ -597,7 +597,9 @@ ANN static void lint_exp_lambda(Lint *a, Exp_Lambda *b) {
 DECL_EXP_FUNC(lint, void, Lint *)
 ANN void lint_exp(Lint *a, Exp b) {
   check_pos(a, &b->pos->first);
+  if(b->paren) lint_lparen(a);
   lint_exp_func[b->exp_type](a, &b->d);
+  if(b->paren) lint_rparen(a);
   check_pos(a, &b->pos->last);
   NEXT(a, b, lint_exp)
 }
@@ -1072,7 +1074,7 @@ ANN void lint_func_def(Lint *a, Func_Def b) {
 
 ANN void lint_class_def(Lint *a, Class_Def b) {
   check_pos(a, &b->pos->first);
-  lint(a, "{+C}class{0}");
+  lint(a, "{+C}%s{0}", !cflag(b, cflag_struct) ? "class" : "struct");
   lint_space(a);
   lint_flag(a, b);
   lint(a, "{+W}%s{0}", s_name(b->base.xid));
