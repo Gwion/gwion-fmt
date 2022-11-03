@@ -63,7 +63,7 @@ ANN void lint_nl(Lint *a) {
       lint(a, "\n");
       if (!a->ls->pretty && a->ls->show_line) {
         lint(a, " {-}% 4u{0}", a->line);
-        if (a->mark == a->line)
+        if (a->ls->mark == a->line)
           lint(a, " {+R}>{0}");
         else
           lint(a, "  ");
@@ -105,7 +105,7 @@ ANN void lint_indent(Lint *a) {
     return;
   }
   for (unsigned int i = 0; i < a->indent; ++i) {
-    for (unsigned int j = 0; j < a->nindent; ++j)
+    for (unsigned int j = 0; j < a->ls->nindent; ++j)
       lint_space(a);
   }
 }
@@ -501,8 +501,13 @@ ANN static void lint_exp_unary(Lint *a, Exp_Unary *b) {
         lint_exp(a, b->ctor.exp);
       lint_rparen(a);
     }
-  } else if (b->unary_type == unary_code)
-    lint_stmt_list(a, b->code);
+  } else if (b->unary_type == unary_code) {
+    lint_lbrace(a);
+    lint_nl(a);
+    INDENT(a, lint_stmt_list(a, b->code));
+    lint_indent(a);
+    lint_rbrace(a);
+  }
 }
 
 ANN static void lint_exp_cast(Lint *a, Exp_Cast *b) {
@@ -831,8 +836,7 @@ ANN static void lint_stmt_if(Lint *a, Stmt_If b) {
   paren_exp(a, b->cond);
   lint_code(a, b->if_body);
   if (b->else_body) {
-    lint_nl(a);
-    lint_indent(a);
+    lint_space(a);
     lint(a, "{+M}else{0}");
     lint_code(a, b->else_body);
   }
@@ -892,6 +896,7 @@ ANN static void lint_stmt_match(Lint *a, Stmt_Match b) {
   INDENT(a, lint_case_list(a, b->list))
   lint_indent(a);
   lint_nl(a);
+  lint_indent(a);
   lint_rbrace(a);
   if (b->where) {
     lint_space(a);

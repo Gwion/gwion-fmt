@@ -13,7 +13,7 @@ ANN static inline void lint_file(Lint *a, const m_str name) {
 ANN static int lint_gw(struct AstGetter_ *arg, struct LintState *ls) {
   const Ast ast = parse(arg);
   if (!ast) return 1;
-  Lint l = {.mp = arg->st->p, .st = arg->st, .ls = ls, .line = 1, .mark = ls->mark, .nindent = 4};
+  Lint l = {.mp = arg->st->p, .st = arg->st, .ls = ls, .line = 1 };
   if (!ls->pretty) {
     if (l.ls->header) {
       lint(&l, "       {N}┏━━━{0} ");
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
   SymTable *    st  = new_symbol_table(mp, 65347); // could be smaller
   struct PPArg_ ppa = {.lint = 1};
   pparg_ini(mp, &ppa);
-  struct LintState ls = {.color = isatty(1), .show_line = true, .header = true};
+  struct LintState ls = {.color = isatty(1), .show_line = true, .header = true, .nindent = 2};
   int              ret = 0;
   tcol_override_color_checks(ls.color);
   for (int i = 1; i < argc; ++i) {
@@ -104,6 +104,9 @@ int main(int argc, char **argv) {
     } else if (!strcmp(argv[i], "-c")) {
       ls.color = !ls.color;
       tcol_override_color_checks(ls.color);
+      continue;
+    } else if (!strncmp(argv[i], "-i", 2)) {
+      ls.nindent = atoi(argv[i] + 2);
       continue;
     }
     FILE *file = fopen(argv[i], "r");
