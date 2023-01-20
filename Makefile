@@ -9,6 +9,7 @@ CFLAGS += -Wall -Wextra -Wno-unused
 # Includes
 CFLAGS += -I../util/include
 CFLAGS += -I../ast/include
+CFLAGS += -I../ast/libprettyerr/src
 CFLAGS += -Iinclude
 
 # Libraries

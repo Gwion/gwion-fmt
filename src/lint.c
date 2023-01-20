@@ -1,6 +1,4 @@
-#include <unistd.h>
 #include <ctype.h>
-#include <limits.h>
 #include "gwion_util.h"
 #include "gwion_ast.h"
 #include "gwfmt.h"
@@ -14,9 +12,15 @@
     --a->indent;                                                               \
   }
 
-#define check_pos(a, b)
+int gwfmt_printf(const char * fmt, ...) {
+  return tcol_printf(fmt);
+}
 
-#define printf tcol_printf
+int (*_print)(const char *, ...) = gwfmt_printf;
+
+ANN void lint_set_func(int (*f)(const char*, ...)) {
+  _print = f;
+}
 
 ANN static enum char_type cht(const char c) {
   if (isalnum(c) || c == '_') return cht_id;
@@ -40,12 +44,19 @@ ANN void lint(Lint *a, const m_str fmt, ...) {
   va_start(ap, fmt);
 
   vsprintf(buf, fmt, ap);
-  printf(buf);
-  if (a->need_space && a->last != cht_op && a->last == cht(buf[0])) printf(" ");
+  char tmp[strlen(buf)*4];
+  tcol_snprintf(tmp, strlen(buf)*4, buf);
+  text_add(&a->ls->text, tmp);
+  if (a->need_space && a->last != cht_op && a->last == cht(buf[0])) {
+    //_print(" ");
+    text_add(&a->ls->text, " ");
+    a->column += 1;
+  }
   a->last = cht(buf[n - 1]);
   mp_free2(a->mp, n + 1, buf);
   va_end(ap);
   a->need_space = 0;
+  a->column += n;
   //  }
 }
 
@@ -71,6 +82,7 @@ ANN void lint_nl(Lint *a) {
       }
     }
   }
+  a->column = a->ls->base_column;
   a->line++;
   a->nl = nl;
 }
@@ -104,35 +116,17 @@ ANN void lint_indent(Lint *a) {
     a->skip_indent--;
     return;
   }
-  for (unsigned int i = 0; i < a->indent; ++i) {
-    for (unsigned int j = 0; j < a->ls->nindent; ++j)
-      lint_space(a);
-  }
-}
-/*
-static inline void check_pos(Lint *a, const struct pos_t *b) {
-  if(!map_size(a->macro))
-    return;
-  const loc_t loc = (loc_t)VKEY(a->macro, 0);
-  if(b->line >= a->pos.line || (b->line == a->pos.line && b->column + 1 >=
-a->pos.column)) { if(!a->skip) { Macro m = (Macro)VVAL(a->macro, 0); lint(a,
-m->name); if(b->line > a->pos.line) lint_nl(a); a->pos = loc->last; a->skip = 1;
-    } else {
-      a->skip = 0;
-      Macro m = (Macro)VVAL(a->macro, 0);
-      xfree(m->name);
-      mp_free(a->mp, Macro, m);
-      map_remove(a->macro, (vtype)loc);
-      mp_free(a->mp, loc_t, loc);
-      const loc_t new_loc = VLEN(a->macro) ? (loc_t)VKEY(a->macro, 0) : NULL;
-      if(new_loc)
-        a->pos = new_loc->first;
-      else
-        a->pos.line = INT_MAX;
+  if(!a->ls->use_tabs) {
+    for (unsigned int i = 0; i < a->indent; ++i) {
+      for (unsigned int j = 0; j < a->ls->nindent; ++j)
+        lint_space(a);
     }
+  } else {
+    for (unsigned int i = 0; i < a->indent; ++i)
+      lint(a, "\t");
   }
 }
-*/
+
 ANN static void paren_exp(Lint *a, Exp b);
 ANN static void maybe_paren_exp(Lint *a, Exp b);
 ANN static void lint_array_sub2(Lint *a, Array_Sub b);
@@ -170,7 +164,7 @@ ANN static void lint_symbol(Lint *a, Symbol b) {
       !strcmp(s, "adc") || !strcmp(s, "dac") || !strcmp(s, "now"))
     lint(a, "{B}%s{0}", s_name(b));
   else
-    lint(a, s_name(b));
+    lint(a, s);
 }
 
 ANN static void lint_array_sub(Lint *a, Array_Sub b) {
@@ -192,14 +186,12 @@ ANN static void lint_array_sub(Lint *a, Array_Sub b) {
 
 ANN static void lint_id_list(Lint *a, ID_List b) {
   for(uint32_t i = 0; i < b->len; i++) {
-    check_pos(a, &b->pos->first);
     Symbol xid = *mp_vector_at(b, Symbol, i);
     lint_symbol(a, xid);
     if(i < b->len - 1) {
       lint_comma(a);
       lint_space(a);
     }
-    check_pos(a, &b->pos->last);
   }
 }
 
@@ -213,7 +205,6 @@ ANN void lint_traits(Lint *a, ID_List b) {
 ANN static void lint_specialized_list(Lint *a, Specialized_List b) {
   for(uint32_t i = 0; i < b->len; i++) {
     Specialized *spec = mp_vector_at(b, Specialized, i);
-    check_pos(a, &spec->pos->first);
     lint(a, "{-C}%s{0}", s_name(spec->xid));
     if (spec->traits) {
       lint_space(a);
@@ -223,7 +214,6 @@ ANN static void lint_specialized_list(Lint *a, Specialized_List b) {
       lint_comma(a);
       lint_space(a);
     }
-    check_pos(a, &spec->pos->last);
   }
 }
 
@@ -318,7 +308,6 @@ ANN static void lint_effects(Lint *a, Vector b) {
 }
 
 ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
-  check_pos(a, &b->pos->first);
   if (GET_FLAG(b, const)) {
     lint(a, "{+G}const{0}");
     lint_space(a);
@@ -352,7 +341,6 @@ ANN static void lint_type_decl(Lint *a, Type_Decl *b) {
     lint(a, ".");
     lint_type_decl(a, b->next);
   }
-  check_pos(a, &b->pos->last);
 }
 
 ANN static void lint_prim_id(Lint *a, Symbol *b) { lint_symbol(a, *b); }
@@ -378,10 +366,10 @@ ANN static void lint_string(Lint *a, m_str str) {
     a->nl = 0;
     const m_str next = strchr(str, '\n');
     if(!next) {
-      printf("{Y/}%s{0}", str);
+      lint(a, "{Y/}%s{0}", str);
       break;
     }
-    printf("{Y/}%.*s{0}", next-str, str);
+    lint(a, "{Y/}%.*s{0}", next-str, str);
     pass += next - str + 1;
     str = next + 1;
   }
@@ -439,9 +427,7 @@ ANN static void lint_prim(Lint *a, Exp_Primary *b) {
 }
 
 ANN static void lint_var_decl(Lint *a, Var_Decl *b) {
-  check_pos(a, &b->pos->first);
   if (b->xid) lint(a, "{W+}%s{0}", s_name(b->xid));
-  check_pos(a, &b->pos->last);
 }
 
 ANN static void lint_exp_decl(Lint *a, Exp_Decl *b) {
@@ -601,11 +587,9 @@ ANN static void lint_exp_lambda(Lint *a, Exp_Lambda *b) {
 
 DECL_EXP_FUNC(lint, void, Lint *)
 ANN void lint_exp(Lint *a, Exp b) {
-  check_pos(a, &b->pos->first);
   if(b->paren) lint_lparen(a);
   lint_exp_func[b->exp_type](a, &b->d);
   if(b->paren) lint_rparen(a);
-  check_pos(a, &b->pos->last);
   NEXT(a, b, lint_exp)
 }
 
@@ -621,9 +605,7 @@ ANN static void lint_prim_interp(Lint *a, Exp *b) {
     } else {
       lint(a, "{Y/-}${{{0}"); // do not use rbace
       lint_space(a);
-      check_pos(a, &e->pos->first);
       lint_exp_func[e->exp_type](a, &e->d);
-      check_pos(a, &e->pos->last);
       lint_space(a);
       lint(a, "{-/Y}}{0}{/Y}");
     }
@@ -639,9 +621,7 @@ ANN static void lint_array_sub2(Lint *a, Array_Sub b) {
   for (m_uint i = 0; i < b->depth; ++i) {
     lint_lbrack(a);
     if (e) {
-      check_pos(a, &e->pos->first);
       lint_exp_func[e->exp_type](a, &e->d);
-      check_pos(a, &e->pos->last);
       e = e->next;
     }
     lint_rbrack(a);
@@ -974,12 +954,10 @@ ANN static void lint_stmt_defer(Lint *a, Stmt_Defer b) {
 }
 
 ANN static void lint_stmt(Lint *a, Stmt b) {
-  check_pos(a, &b->pos->first);
   const uint skip_indent = a->skip_indent;
   if (b->stmt_type != ae_stmt_pp) lint_indent(a);
   lint_stmt_func[b->stmt_type](a, &b->d);
   if (!skip_indent) lint_nl(a);
-  check_pos(a, &b->pos->last);
 }
 
 ANN static void lint_arg_list(Lint *a, Arg_List b, const bool locale) {
@@ -1049,7 +1027,6 @@ ANN static void lint_func_base(Lint *a, Func_Base *b) {
 }
 
 ANN void lint_func_def(Lint *a, Func_Def b) {
-  check_pos(a, &b->pos->first);
   if(fbflag(b->base, fbflag_locale))
     lint(a, "{+C}locale{0}");
   else if(!fbflag(b->base, fbflag_op) && strcmp(s_name(b->base->xid), "new"))
@@ -1074,11 +1051,9 @@ ANN void lint_func_def(Lint *a, Func_Def b) {
     lint_sc(a);
   }
   lint_nl(a);
-  check_pos(a, &b->pos->last);
 }
 
 ANN void lint_class_def(Lint *a, Class_Def b) {
-  check_pos(a, &b->pos->first);
   lint(a, "{+C}%s{0}", !cflag(b, cflag_struct) ? "class" : "struct");
   lint_space(a);
   lint_flag(a, b);
@@ -1100,7 +1075,6 @@ ANN void lint_class_def(Lint *a, Class_Def b) {
       lint_indent(a);
     }
     lint_rbrace(a);
-    check_pos(a, &b->pos->last);
   }
   lint_nl(a);
 }
@@ -1120,7 +1094,6 @@ ANN void lint_enum_def(Lint *a, Enum_Def b) {
 }
 
 ANN void lint_union_def(Lint *a, Union_Def b) {
-  check_pos(a, &b->pos->first);
   lint(a, "{+C}union{0}");
   lint_space(a);
   lint_flag(a, b);
@@ -1134,21 +1107,17 @@ ANN void lint_union_def(Lint *a, Union_Def b) {
   lint_rbrace(a);
   lint_sc(a);
   lint_nl(a);
-  check_pos(a, &b->pos->last);
 }
 
 ANN void lint_fptr_def(Lint *a, Fptr_Def b) {
-  //  check_pos(a, &b->pos->first);
   lint(a, "{+C}funptr{0}");
   lint_space(a);
   lint_func_base(a, b->base);
   lint_sc(a);
   lint_nl(a);
-  //  check_pos(a, &b->pos->last);
 }
 
 ANN void lint_type_def(Lint *a, Type_Def b) {
-  //  check_pos(a, &b->pos->first);
   lint(a, "{+C}%s{0}", !b->distinct ? "typedef" : "distinct");
   lint_space(a);
   if (b->ext) {
@@ -1168,11 +1137,9 @@ ANN void lint_type_def(Lint *a, Type_Def b) {
   }
   lint_sc(a);
   lint_nl(a);
-  //  check_pos(a, &b->pos->last);
 }
 
 ANN static void lint_extend_def(Lint *a, Extend_Def b) {
-  //  check_pos(a, &b->pos->first);
   lint(a, "{+C}extends{0}");
   lint_space(a);
   lint_type_decl(a, b->td);
@@ -1212,10 +1179,8 @@ ANN void lint_prim_def(Lint *a, Prim_Def b) {
 
 DECL_SECTION_FUNC(lint, void, Lint *)
 ANN static void lint_section(Lint *a, Section *b) {
-  //  check_pos(a, &b->pos->first);
   if (b->section_type != ae_section_stmt) lint_indent(a);
   lint_section_func[b->section_type](a, *(void **)&b->d);
-  //  check_pos(a, &b->pos->last);
 }
 
 ANN void lint_ast(Lint *a, Ast b) {

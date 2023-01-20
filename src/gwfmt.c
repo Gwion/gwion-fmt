@@ -73,6 +73,7 @@ int main(int argc, char **argv) {
   struct PPArg_ ppa = {.lint = 1};
   pparg_ini(mp, &ppa);
   struct LintState ls = {.color = isatty(1), .show_line = true, .header = true, .nindent = 2};
+  text_init(&ls.text, mp);
   int              ret = 0;
   tcol_override_color_checks(ls.color);
   for (int i = 1; i < argc; ++i) {
@@ -114,7 +115,9 @@ int main(int argc, char **argv) {
     struct AstGetter_ arg = {argv[i], file, st, .ppa = &ppa};
     ret                   = (!ls.unpy ? lint_gw : lint_unpy)(&arg, &ls);
     fclose(file);
+    printf("%s", ls.text.str);
   }
+  // free_text
   pparg_end(&ppa);
   free_symbols(st);
   mempool_end(mp);
