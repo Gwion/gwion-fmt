@@ -6,34 +6,34 @@
 #include "gwfmt.h"
 #include "unpy.h"
 
-ANN static inline void lint_file(Lint *a, const m_str name) {
-  lint_util(a, "{-}File:{0} {+}%s{0}\n", name);
+ANN static inline void gwfmt_file(Gwfmt *a, const m_str name) {
+  gwfmt_util(a, "{-}File:{0} {+}%s{0}\n", name);
 }
 
-ANN static int lint_gw(struct AstGetter_ *arg, struct LintState *ls) {
+ANN static int gwfmt_gw(struct AstGetter_ *arg, struct GwfmtState *ls) {
   const Ast ast = parse(arg);
   if (!ast) return 1;
-  Lint l = {.mp = arg->st->p, .st = arg->st, .ls = ls, .line = 1 };
+  Gwfmt l = {.mp = arg->st->p, .st = arg->st, .ls = ls, .line = 1 };
   if (!ls->pretty) {
     if (l.ls->header) {
-      lint_util(&l, "       {N}┏━━━{0} ");
-      lint_file(&l, arg->name);
-      lint_util(&l, "{0}  {-}     {N}┃{0}");
+      gwfmt_util(&l, "       {N}┏━━━{0} ");
+      gwfmt_file(&l, arg->name);
+      gwfmt_util(&l, "{0}  {-}     {N}┃{0}");
     }
-    lint_nl(&l);
+    gwfmt_nl(&l);
   } else if (l.ls->header) {
-    lint_util(&l, "\n");
-    lint_util(&l, arg->name);
+    gwfmt_util(&l, "\n");
+    gwfmt_util(&l, arg->name);
   }
-  lint_ast(&l, ast);
+  gwfmt_ast(&l, ast);
   free_ast(l.mp, ast);
   ls->mark = 0;
   if (!ls->pretty) {
     if(!ls->minimize)
-      lint_util(&l, "\b\b\b\b\b\b\b");
+      gwfmt_util(&l, "\b\b\b\b\b\b\b");
     if (l.ls->header) {
-      lint_util(&l, "{0}{-}     {N}┃{0}\n");
-      lint_util(&l, "       {N}┗━━━{0}\n");
+      gwfmt_util(&l, "{0}{-}     {N}┃{0}\n");
+      gwfmt_util(&l, "       {N}┗━━━{0}\n");
     }
   }
   return 0;
@@ -52,7 +52,7 @@ ANN static void read_py(struct AstGetter_ *arg, char **ptr, size_t *sz) {
   fclose(f);
 }
 
-ANN static int lint_unpy(struct AstGetter_ *arg, struct LintState *ls) {
+ANN static int gwfmt_unpy(struct AstGetter_ *arg, struct GwfmtState *ls) {
   char * ptr;
   size_t sz;
   read_py(arg, &ptr, &sz);
@@ -60,7 +60,7 @@ ANN static int lint_unpy(struct AstGetter_ *arg, struct LintState *ls) {
   if (!ls->onlypy) {
     FILE *            f       = fmemopen(ptr, sz, "r");
     struct AstGetter_ new_arg = {arg->name, f, arg->st, .ppa = arg->ppa};
-    ret                       = lint_gw(&new_arg, ls);
+    ret                       = gwfmt_gw(&new_arg, ls);
     fclose(f);
   } else
     printf("%s", ptr);
@@ -71,9 +71,9 @@ ANN static int lint_unpy(struct AstGetter_ *arg, struct LintState *ls) {
 int main(int argc, char **argv) {
   MemPool       mp  = mempool_ini(sizeof(struct Exp_));
   SymTable *    st  = new_symbol_table(mp, 65347); // could be smaller
-  struct PPArg_ ppa = {.lint = 1};
+  struct PPArg_ ppa = {.fmt = 1};
   pparg_ini(mp, &ppa);
-  struct LintState ls = {.color = isatty(1), .show_line = true, .header = true, .nindent = 2, .ppa = &ppa};
+  struct GwfmtState ls = {.color = isatty(1), .show_line = true, .header = true, .nindent = 2, .ppa = &ppa};
   text_init(&ls.text, mp);
   int              ret = 0;
   tcol_override_color_checks(ls.color);
@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
       ls.unpy = !ls.unpy;
       continue;
     } else if (!strcmp(argv[i], "-e")) { // expand
-      ppa.lint = !ppa.lint;
+      ppa.fmt = !ppa.fmt;
       continue;
     } else if (!strcmp(argv[i], "-r")) { // only pythonify
       ls.onlypy = ls.unpy = !ls.onlypy;
@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
     FILE *file = fopen(argv[i], "r");
     if (!file) continue;
     struct AstGetter_ arg = {argv[i], file, st, .ppa = &ppa};
-    ret                   = (!ls.unpy ? lint_gw : lint_unpy)(&arg, &ls);
+    ret                   = (!ls.unpy ? gwfmt_gw : gwfmt_unpy)(&arg, &ls);
     fclose(file);
     printf("%s", ls.text.str);
     text_reset(&ls.text);

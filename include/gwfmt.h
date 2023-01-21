@@ -1,6 +1,6 @@
 enum char_type { cht_id, cht_op, cht_delim, cht_sp };
 
-struct LintState {
+struct GwfmtState {
   GwText       text;
   struct PPArg_ *ppa;
   unsigned int nindent;
@@ -22,7 +22,7 @@ typedef struct {
   MemPool           mp;
   SymTable          *st; // only for spread
   Map               macro;
-  struct LintState *ls;
+  struct GwfmtState *ls;
   //  struct pos_t pos;
   unsigned int   indent;
   unsigned int   skip_indent;
@@ -32,25 +32,25 @@ typedef struct {
   unsigned int   column;
   //  bool skip; // check_pos
   bool need_space;
-} Lint;
+} Gwfmt;
 
-ANN void lint(Lint *a, const m_str, ...);
-ANN void lint_util(Lint *a, const m_str, ...);
-ANN void lint_indent(Lint *a);
-ANN void lint_sc(Lint *a);
-ANN void lint_nl(Lint *a);
-ANN void lint_comma(Lint *a);
-ANN void lint_space(Lint *a);
-ANN void lint_lparen(Lint *a);
-ANN void lint_rparen(Lint *a);
-ANN void lint_lbrace(Lint *a);
-ANN void lint_rbrace(Lint *a);
-ANN void lint_exp(Lint *a, Exp b);
-ANN void lint_func_def(Lint *a, Func_Def b);
-ANN void lint_class_def(Lint *a, Class_Def b);
-ANN void lint_enum_def(Lint *a, Enum_Def b);
-ANN void lint_union_def(Lint *a, Union_Def b);
-ANN void lint_fptr_def(Lint *a, Fptr_Def b);
-ANN void lint_type_def(Lint *a, Type_Def b);
-ANN void lint_prim_def(Lint *a, Prim_Def b);
-ANN void lint_ast(Lint *a, Ast b);
+ANN void gwfmt(Gwfmt *a, const m_str, ...);
+ANN void gwfmt_util(Gwfmt *a, const m_str, ...);
+ANN void gwfmt_indent(Gwfmt *a);
+ANN void gwfmt_sc(Gwfmt *a);
+ANN void gwfmt_nl(Gwfmt *a);
+ANN void gwfmt_comma(Gwfmt *a);
+ANN void gwfmt_space(Gwfmt *a);
+ANN void gwfmt_lparen(Gwfmt *a);
+ANN void gwfmt_rparen(Gwfmt *a);
+ANN void gwfmt_lbrace(Gwfmt *a);
+ANN void gwfmt_rbrace(Gwfmt *a);
+ANN void gwfmt_exp(Gwfmt *a, Exp b);
+ANN void gwfmt_func_def(Gwfmt *a, Func_Def b);
+ANN void gwfmt_class_def(Gwfmt *a, Class_Def b);
+ANN void gwfmt_enum_def(Gwfmt *a, Enum_Def b);
+ANN void gwfmt_union_def(Gwfmt *a, Union_Def b);
+ANN void gwfmt_fptr_def(Gwfmt *a, Fptr_Def b);
+ANN void gwfmt_type_def(Gwfmt *a, Type_Def b);
+ANN void gwfmt_prim_def(Gwfmt *a, Prim_Def b);
+ANN void gwfmt_ast(Gwfmt *a, Ast b);
