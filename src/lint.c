@@ -68,7 +68,7 @@ ANN void lint_util(Lint *a, const m_str fmt, ...) {
 ANN void lint(Lint *a, const m_str fmt, ...) {
 
   a->nl = 0;
-  va_list ap, aq;
+  va_list ap;
 
   va_start(ap, fmt);
   int n = vsnprintf(NULL, 0, fmt, ap);
@@ -76,18 +76,12 @@ ANN void lint(Lint *a, const m_str fmt, ...) {
 
   char * buf = mp_malloc2(a->mp, n + 1);
   va_start(ap, fmt);
-
   vsprintf(buf, fmt, ap);
-  char tmp[strlen(buf)*4];
-  int ret = tcol_snprintf(tmp, strlen(buf)*4, buf);
-  if(ret != TermColorErrorNone) exit(3);
   if (a->need_space && a->last != cht_delim && a->last == cht(buf[0])) {
-
-
     text_add(&a->ls->text, " ");
     a->column += 1;
   }
-  text_add(&a->ls->text, tmp);
+  text_add(&a->ls->text, buf);
   a->last = cht(buf[n - 1]);
   mp_free2(a->mp, n + 1, buf);
   va_end(ap);
@@ -123,7 +117,7 @@ ANN void lint_nl(Lint *a) {
 }
 
 ANN void lint_lbrace(Lint *a) {
-  if (!a->ls->py) COLOR(a, "{-}", "{{");
+  if (!a->ls->py) COLOR(a, "{-}", "{");
 }
 
 ANN void lint_rbrace(Lint *a) {
@@ -667,7 +661,7 @@ ANN static void lint_prim_interp(Lint *a, Exp *b) {
     if (e->exp_type == ae_exp_primary && e->d.prim.prim_type == ae_prim_str) {
       lint_string(a,  e->d.prim.d.string.data);
     } else {
-      COLOR(a, "{Y/-}", "${{");
+      COLOR(a, "{Y/-}", "${");
       lint_space(a);
       lint_exp_func[e->exp_type](a, &e->d);
       lint_space(a);
