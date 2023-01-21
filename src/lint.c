@@ -930,8 +930,10 @@ ANN static void lint_stmt_pp(Lint *a, Stmt_PP b) {
     return;
   }
   if (b->pp_type == ae_pp_include) {
-    lint(a, "{M/}#%s{0} %s<%s>{0}", pp[b->pp_type], pp_color[b->pp_type],
-         b->data ?: "");
+    if(*b->data == '<') {
+      lint(a, "{M/}#%s{0} %s<%s>{0}", pp[b->pp_type], pp_color[b->pp_type],
+           b->data ?: "");
+    }
   } else if (b->pp_type != ae_pp_comment) {
     lint(a, "{M/}#%s{0} %s%s{0}", pp[b->pp_type], pp_color[b->pp_type],
          b->data ?: "");
