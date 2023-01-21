@@ -7,7 +7,7 @@
 #include "unpy.h"
 
 ANN static inline void lint_file(Lint *a, const m_str name) {
-  lint(a, "{-}File:{0} {+}%s{0}\n", name);
+  lint_util(a, "{-}File:{0} {+}%s{0}\n", name);
 }
 
 ANN static int lint_gw(struct AstGetter_ *arg, struct LintState *ls) {
@@ -16,23 +16,24 @@ ANN static int lint_gw(struct AstGetter_ *arg, struct LintState *ls) {
   Lint l = {.mp = arg->st->p, .st = arg->st, .ls = ls, .line = 1 };
   if (!ls->pretty) {
     if (l.ls->header) {
-      lint(&l, "       {N}┏━━━{0} ");
+      lint_util(&l, "       {N}┏━━━{0} ");
       lint_file(&l, arg->name);
-      lint(&l, "{0}  {-}     {N}┃{0}");
+      lint_util(&l, "{0}  {-}     {N}┃{0}");
     }
     lint_nl(&l);
   } else if (l.ls->header) {
-    lint(&l, "\n");
-    lint_file(&l, arg->name);
+    lint_util(&l, "\n");
+    lint_util(&l, arg->name);
   }
   lint_ast(&l, ast);
   free_ast(l.mp, ast);
   ls->mark = 0;
   if (!ls->pretty) {
-    lint(&l, "\b\b\b\b\b\b\b");
+    if(!ls->minimize)
+      lint_util(&l, "\b\b\b\b\b\b\b");
     if (l.ls->header) {
-      lint(&l, "{0}{-}     {N}┃{0}\n");
-      lint(&l, "       {N}┗━━━{0}\n");
+      lint_util(&l, "{0}{-}     {N}┃{0}\n");
+      lint_util(&l, "       {N}┗━━━{0}\n");
     }
   }
   return 0;
@@ -72,7 +73,7 @@ int main(int argc, char **argv) {
   SymTable *    st  = new_symbol_table(mp, 65347); // could be smaller
   struct PPArg_ ppa = {.lint = 1};
   pparg_ini(mp, &ppa);
-  struct LintState ls = {.color = isatty(1), .show_line = true, .header = true, .nindent = 2};
+  struct LintState ls = {.color = isatty(1), .show_line = true, .header = true, .nindent = 2, .ppa = &ppa};
   text_init(&ls.text, mp);
   int              ret = 0;
   tcol_override_color_checks(ls.color);
@@ -116,8 +117,10 @@ int main(int argc, char **argv) {
     ret                   = (!ls.unpy ? lint_gw : lint_unpy)(&arg, &ls);
     fclose(file);
     printf("%s", ls.text.str);
+    text_reset(&ls.text);
   }
   // free_text
+  text_release(&ls.text);
   pparg_end(&ppa);
   free_symbols(st);
   mempool_end(mp);

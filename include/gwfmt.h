@@ -1,7 +1,8 @@
-enum char_type { cht_id, cht_op, cht_sp };
+enum char_type { cht_id, cht_op, cht_delim, cht_sp };
 
 struct LintState {
   GwText       text;
+  struct PPArg_ *ppa;
   unsigned int nindent;
   unsigned int mark;
   unsigned int base_column;
@@ -34,6 +35,7 @@ typedef struct {
 } Lint;
 
 ANN void lint(Lint *a, const m_str, ...);
+ANN void lint_util(Lint *a, const m_str, ...);
 ANN void lint_indent(Lint *a);
 ANN void lint_sc(Lint *a);
 ANN void lint_nl(Lint *a);
