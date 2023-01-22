@@ -496,7 +496,7 @@ ANN static void gwfmt_exp_decl(Gwfmt *a, Exp_Decl *b) {
       gwfmt_space(a);
     }
     gwfmt_type_decl(a, b->td);
-    if(b->args) paren_exp(a, b->args);
+    if(b->args) maybe_paren_exp(a, b->args);
     gwfmt_space(a);
   }
   gwfmt_var_decl(a, &b->vd);
@@ -688,8 +688,8 @@ ANN static void gwfmt_array_sub2(Gwfmt *a, Array_Sub b) {
 
 ANN static void paren_exp(Gwfmt *a, Exp b) {
   gwfmt_lparen(a);
-  if(b->exp_type != ae_exp_primary &&
-     b->d.prim.prim_type != ae_prim_nil)
+  //if(b->exp_type != ae_exp_primary &&
+  //   b->d.prim.prim_type != ae_prim_nil)
     gwfmt_exp(a, b);
   gwfmt_rparen(a);
 }
