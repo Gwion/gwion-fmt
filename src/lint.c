@@ -35,7 +35,6 @@ ANN static enum char_type cht(const char c) {
   char * delim = "(){},;`]";
   do
     if (c == *delim) return cht_delim;
-  //while (++delim)";
   while (*delim++);
   return cht_sp;
 }
@@ -68,6 +67,15 @@ ANN void gwfmt_util(Gwfmt *a, const m_str fmt, ...) {
   va_end(ap);
 }
 
+ANN static void handle_space(Gwfmt *a, char c) {
+  if ((a->need_space && a->last != cht_delim && cht(c) != cht_delim && a->last == cht(c)) ||
+
+      (a->last == cht_colon /*&& (*buf == cht_lbrack || *buf == cht_op)*/)) {
+    text_add(&a->ls->text, " ");
+    a->column += 1;
+  }
+  a->need_space = 0;
+}
 ANN void gwfmt(Gwfmt *a, const m_str fmt, ...) {
 
   a->nl = 0;
@@ -80,16 +88,11 @@ ANN void gwfmt(Gwfmt *a, const m_str fmt, ...) {
   char * buf = mp_malloc2(a->mp, n + 1);
   va_start(ap, fmt);
   vsprintf(buf, fmt, ap);
-  if ((a->need_space && a->last != cht_delim && a->last == cht(buf[0])) ||
-      (a->last == cht_colon /*&& (*buf == cht_lbrack || *buf == cht_op)*/)) {
-    text_add(&a->ls->text, " ");
-    a->column += 1;
-  }
+  handle_space(a, buf[0]);
   text_add(&a->ls->text, buf);
   a->last = cht(buf[n - 1]);
   mp_free2(a->mp, n + 1, buf);
   va_end(ap);
-  a->need_space = 0;
   a->column += n;
 }
 
@@ -401,32 +404,39 @@ ANN static void gwfmt_prim_float(Gwfmt *a, m_float *b) {
   }
 }
 
-ANN static void gwfmt_string(Gwfmt *a, m_str str) {
-  const size_t len = strlen(str);
-  size_t pass = 0;
-  const m_uint nl = a->nl;
-  while(pass < len) {
-    if(pass)
-      gwfmt_nl(a);
-    a->nl = 0;
-    const m_str next = strchr(str, '\n');
-    if(!next) {
-      COLOR(a, "{Y/}", str);
-      break;
-    }
-    color(a, "{Y/}");
-    gwfmt(a, "%.*s", next-str, str);
-    color(a, "{0}");
-    pass += next - str + 1;
-    str = next + 1;
+ANN static m_str gwfmt_verbatim(Gwfmt *a, m_str b) {
+  const size_t len = strlen(b);
+  bool escape = false;
+  char last = *b;
+  while(*b) {
+     char c[2] = { *b, 0 };
+     escape = *b == '\\';
+     last = *b;
+     b++;
+     if(!escape && *c == '\n') {
+       a->last = cht(last);
+       return b;
+     }
+     text_add(&a->ls->text, c); 
+     a->column++;
   }
-  a->nl = nl;
+  a->last = cht(last);
+  return NULL;
+}
+
+ANN static void gwfmt_string(Gwfmt *a, m_str str) {
+  m_str s = str;
+  while((s = gwfmt_verbatim(a, s))) {
+      color(a, "{0}");
+      gwfmt_nl(a);
+      color(a, "{/Y}");
+  }
 }
 
 ANN static void gwfmt_delim(Gwfmt *a, uint16_t delim) {
   if(delim) {
     color(a, "{Y-}");
-    gwfmt(a, "%.*c",  delim - 1, '#');
+    gwfmt(a, "%.*c",  delim, '#');
   }
   COLOR(a, "{0}{Y-}", "\"");
   color(a, "{/Y}");
@@ -436,16 +446,15 @@ ANN static void gwfmt_delim2(Gwfmt *a, uint16_t delim) {
   COLOR(a, "{0}{Y-}", "\"");
   if(delim) {
     color(a, "{Y-}");
-    gwfmt(a, "%.*c",  delim - 1, '#');
+    gwfmt(a, "%.*c",  delim, '#');
   }
   color(a, "{0}");
 }
 
 ANN static void gwfmt_prim_str(Gwfmt *a, struct AstString *b) {
-  const uint16_t delim = b->delim > 0 ? b->delim - 1 : 0;
-  gwfmt_delim(a, delim);
+  gwfmt_delim(a, b->delim);
   gwfmt_string(a, b->data);
-  gwfmt_delim2(a, delim);
+  gwfmt_delim2(a, b->delim);
 }
 
 ANN static void gwfmt_prim_array(Gwfmt *a, Array_Sub *b) {
@@ -513,18 +522,18 @@ ANN static void gwfmt_exp_td(Gwfmt *a, Type_Decl *b) {
 }
 
 ANN static void gwfmt_op(Gwfmt *a, const Symbol b) {
-  COLOR(a, "{-G}", s_name(b));
+  m_str s = s_name(b);
+  handle_space(a, *s);
+  color(a, "{-G}");
+  gwfmt_verbatim(a, s_name(b));
+  color(a, "{0}");
 }
 
 ANN static void gwfmt_exp_binary(Gwfmt *a, Exp_Binary *b) {
   const unsigned int coloncolon = !strcmp(s_name(b->op), "::");
   maybe_paren_exp(a, b->lhs);
   if (!coloncolon) gwfmt_space(a);
-  //  gwfmt_symbol(a, b->op);
-  if(strcmp(s_name(b->op), "%"))
-    gwfmt_op(a, b->op);
-  else
-    COLOR(a, "{-G}", "%%");
+  gwfmt_op(a, b->op);
   if (!coloncolon) gwfmt_space(a);
   gwfmt_exp(a, b->rhs);
 }
@@ -1106,7 +1115,9 @@ ANN static void gwfmt_func_base(Gwfmt *a, Func_Base *b) {
     gwfmt_space(a);
   }
   if (!fbflag(b, fbflag_unary)) {
-    COLOR(a, "{M}", s_name(b->xid));
+    if (!fbflag(b, fbflag_op))
+      COLOR(a, "{M}", s_name(b->xid));
+    else gwfmt_op(a, b->xid); 
     if (b->tmpl) gwfmt_tmpl(a, b->tmpl);
   }
   if (fbflag(b, fbflag_op))

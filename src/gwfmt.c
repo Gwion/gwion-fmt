@@ -13,7 +13,7 @@ ANN static inline void gwfmt_file(Gwfmt *a, const m_str name) {
 ANN static int gwfmt_gw(struct AstGetter_ *arg, struct GwfmtState *ls) {
   const Ast ast = parse(arg);
   if (!ast) return 1;
-  Gwfmt l = {.mp = arg->st->p, .st = arg->st, .ls = ls, .line = 1 };
+  Gwfmt l = {.mp = arg->st->p, .st = arg->st, .ls = ls, .line = 1, .last = cht_nl };
   if (!ls->pretty) {
     if (l.ls->header) {
       gwfmt_util(&l, "       {N}┏━━━{0} ");
