@@ -24,12 +24,15 @@ ANN void gwfmt_set_func(int (*f)(const char*, ...)) {
 
 ANN static enum char_type cht(const char c) {
   if (isalnum(c) || c == '_') return cht_id;
-  char *op = "?:$@+-/%~<>^|&!=*";
+  if (c == ':') return cht_colon;
+  if (c == '[') return cht_lbrack;
+  if (c == '\n') return cht_nl;
+  char *op = "?$@+-/%~<>^|&!=*";
   do
     if (c == *op) return cht_op;
   //while (++op);
   while (*op++);
-  char * delim = "(){},;`";
+  char * delim = "(){},;`]";
   do
     if (c == *delim) return cht_delim;
   //while (++delim)";
@@ -77,7 +80,8 @@ ANN void gwfmt(Gwfmt *a, const m_str fmt, ...) {
   char * buf = mp_malloc2(a->mp, n + 1);
   va_start(ap, fmt);
   vsprintf(buf, fmt, ap);
-  if (a->need_space && a->last != cht_delim && a->last == cht(buf[0])) {
+  if ((a->need_space && a->last != cht_delim && a->last == cht(buf[0])) ||
+      (a->last == cht_colon /*&& (*buf == cht_lbrack || *buf == cht_op)*/)) {
     text_add(&a->ls->text, " ");
     a->column += 1;
   }
@@ -517,7 +521,10 @@ ANN static void gwfmt_exp_binary(Gwfmt *a, Exp_Binary *b) {
   maybe_paren_exp(a, b->lhs);
   if (!coloncolon) gwfmt_space(a);
   //  gwfmt_symbol(a, b->op);
-  gwfmt_op(a, b->op);
+  if(strcmp(s_name(b->op), "%"))
+    gwfmt_op(a, b->op);
+  else
+    COLOR(a, "{-G}", "%%");
   if (!coloncolon) gwfmt_space(a);
   gwfmt_exp(a, b->rhs);
 }
@@ -530,10 +537,23 @@ ANN static int isop(const Symbol s) {
   return 1;
 }
 
+ANN static void gwfmt_captures(Gwfmt *a, Capture_List b) {
+  gwfmt(a, ":");
+  gwfmt_space(a);
+  for (uint32_t i = 0; i < b->len; i++) {
+    Capture *cap = mp_vector_at(b, Capture, i);
+    if(cap->is_ref) gwfmt(a, "&");
+    gwfmt_symbol(a, cap->xid);
+    gwfmt_space(a);
+  }
+  gwfmt(a, ":");
+}
+
 ANN static void gwfmt_exp_unary(Gwfmt *a, Exp_Unary *b) {
   if (s_name(b->op)[0] == '$' && !isop(b->op)) gwfmt_lparen(a);
   gwfmt_op(a, b->op);
   if (s_name(b->op)[0] == '$' && !isop(b->op)) gwfmt_rparen(a);
+  if (b->captures) gwfmt_captures(a, b->captures);
   if (!isop(b->op)) gwfmt_space(a);
   if (b->unary_type == unary_exp)
     gwfmt_exp(a, b->exp);
@@ -630,6 +650,7 @@ ANN static void gwfmt_exp_lambda(Gwfmt *a, Exp_Lambda *b) {
   if (b->def->base->args) {
     gwfmt_lambda_list(a, b->def->base->args);
   }
+  if (b->def->captures) gwfmt_captures(a, b->def->captures);
   if (b->def->d.code) {
     Stmt_List code = b->def->d.code;
     if(mp_vector_len(code) != 1)
@@ -988,6 +1009,7 @@ ANN static void force_nl(Gwfmt *a) {
 
 ANN static void gwfmt_stmt_pp(Gwfmt *a, Stmt_PP b) {
   if (b->pp_type == ae_pp_nl) return;
+  if (a->last != cht_nl) gwfmt(a, "\n");
   if (b->pp_type == ae_pp_locale) {
     COLOR(a, "{M/}", "#locale ");
     COLOR(a, "{+C}", s_name(b->xid));
@@ -1013,6 +1035,7 @@ ANN static void gwfmt_stmt_pp(Gwfmt *a, Stmt_PP b) {
     COLOR(a, "{-}", b->data ?: "");
   }
   force_nl(a);
+  a->last = cht_nl;
 }
 
 ANN static void gwfmt_stmt_defer(Gwfmt *a, Stmt_Defer b) {
@@ -1030,7 +1053,7 @@ ANN static void gwfmt_stmt(Gwfmt *a, Stmt b) {
   if (!skip_indent) gwfmt_nl(a);
 }
 
-ANN static void gwfmt_arg_list(Gwfmt *a, Arg_List b, const bool locale) {
+ANN /*static */void gwfmt_arg_list(Gwfmt *a, Arg_List b, const bool locale) {
   for(uint32_t i = locale; i < b->len; i++) {
     Arg *arg = mp_vector_at(b, Arg, i);
     if (arg->td) {

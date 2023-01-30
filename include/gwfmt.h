@@ -1,4 +1,4 @@
-enum char_type { cht_id, cht_op, cht_delim, cht_sp };
+enum char_type { cht_id, cht_colon, cht_lbrack, cht_nl, cht_op, cht_delim, cht_sp };
 
 struct GwfmtState {
   GwText       text;
