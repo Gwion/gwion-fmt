@@ -1018,7 +1018,7 @@ ANN static void force_nl(Gwfmt *a) {
 
 ANN static void gwfmt_stmt_pp(Gwfmt *a, Stmt_PP b) {
   if (b->pp_type == ae_pp_nl) return;
-  if (a->last != cht_nl) gwfmt(a, "\n");
+  if (a->last != cht_nl && b->pp_type != ae_pp_include) gwfmt(a, "\n");
   if (b->pp_type == ae_pp_locale) {
     COLOR(a, "{M/}", "#locale ");
     COLOR(a, "{+C}", s_name(b->xid));
