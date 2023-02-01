@@ -210,11 +210,10 @@ ANN static void gwfmt_symbol(Gwfmt *a, Symbol b) {
 
 ANN static void gwfmt_array_sub(Gwfmt *a, Array_Sub b) {
   gwfmt_lbrack(a);
-  if (b->exp) {
-    if (b->exp->next) gwfmt_space(a);
-    gwfmt_exp(a, b->exp);
-    if (b->exp->next) gwfmt_space(a);
-  }
+  gwfmt_space(a);
+  gwfmt_exp(a, b->exp);
+  if (!a->ls->minimize) gwfmt_comma(a);
+  gwfmt_space(a);
   gwfmt_rbrack(a);
 }
 
@@ -1191,6 +1190,7 @@ ANN void gwfmt_enum_def(Gwfmt *a, Enum_Def b) {
   gwfmt_space(a);
   gwfmt_id_list(a, b->list);
   gwfmt_space(a);
+  if (!a->ls->minimize) gwfmt_comma(a);
   gwfmt_rbrace(a);
   gwfmt_nl(a);
 }
