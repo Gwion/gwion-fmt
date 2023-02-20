@@ -77,7 +77,6 @@ ANN static void handle_space(Gwfmt *a, char c) {
   a->need_space = 0;
 }
 ANN void gwfmt(Gwfmt *a, const m_str fmt, ...) {
-
   a->nl = 0;
   va_list ap;
 

@@ -43,7 +43,7 @@ endif
 all: ${PRG}
 
 ${PRG}: src/${PRG}.o src/unpy.o libgwion_fmt.a
-	${CC} ${CFLAGS} $? -Iinclude -lgwion_ast -lgwion_util ${LDFLAGS} -lpthread -lm -o ${PRG}
+	${CC} ${CFLAGS} $^ -Iinclude -lgwion_ast -lgwion_util ${LDFLAGS} -lpthread -lm -o $@
 
 libgwion_fmt.a: src/lint.o
 	${AR} ${AR_OPT}

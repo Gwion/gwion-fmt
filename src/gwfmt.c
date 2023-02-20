@@ -5,6 +5,7 @@
 #include "gwion_ast.h"
 #include "gwfmt.h"
 #include "unpy.h"
+#include "cmdapp.h"
 
 ANN static inline void gwfmt_file(Gwfmt *a, const m_str name) {
   gwfmt_util(a, "{-}File:{0} {+}%s{0}\n", name);
@@ -67,6 +68,139 @@ ANN static int gwfmt_unpy(struct AstGetter_ *arg, struct GwfmtState *ls) {
   free(ptr);
   return ret;
 }
+#ifndef GWFMT_VERSION
+#define GWFMT_VERSION "N.A"
+#endif
+
+
+enum {
+  INDENT,
+  PRETTY,
+  PY,
+  UNPY,
+  ONLYPY,
+  HEADER,
+  MARK,
+  EXPAND,
+  MINIFY,
+  COLOR,
+  NOPTIONS
+};
+
+static void setup_options(cmdapp_t *app, cmdopt_t *opt) {
+  cmdapp_set(app, 'i', "indent", CMDOPT_TAKESARG, NULL, "set lenght of indent in spaces",
+             "integer", &opt[INDENT]);
+  cmdapp_set(app, 'n', "pretty", CMDOPT_MAYTAKEARG, NULL, "enable or disable pretty mode",
+             "bool", &opt[PRETTY]);
+  cmdapp_set(app, 'p', "py", CMDOPT_MAYTAKEARG, NULL, "{/}pythonify{0}",
+             "bool", &opt[PY]);
+  cmdapp_set(app, 'u', "unpy", CMDOPT_MAYTAKEARG, NULL, "{/}unpythonify{0}",
+             "bool", &opt[UNPY]);
+  cmdapp_set(app, 'r', "onlypy", CMDOPT_MAYTAKEARG, NULL, "enable or disable python mode only",
+             "bool", &opt[HEADER]);
+  cmdapp_set(app, 'h', "header", CMDOPT_MAYTAKEARG, NULL, "enable or disable header mode",
+             "bool", &opt[ONLYPY]);
+  cmdapp_set(app, 'M', "mark", CMDOPT_TAKESARG, NULL, "mark a line",
+             "integer", &opt[MARK]);
+  cmdapp_set(app, 'e', "expand", CMDOPT_MAYTAKEARG, NULL, "enable or disable lint mode",
+             "bool", &opt[HEADER]);
+  cmdapp_set(app, 'm', "minify", CMDOPT_MAYTAKEARG, NULL, "minimize input",
+             "bool", &opt[MINIFY]);
+  cmdapp_set(app, 'c', "color", CMDOPT_TAKESARG, NULL, "enable or disable {R}c{G}o{B}l{M}o{Y}r{C}s{0}",
+             "{+}auto{-}/never/always", &opt[COLOR]);
+}
+
+#define ARG2INT(a) strtol(a, NULL, 10)
+
+typedef struct GwArg {
+  SymTable *st;
+  struct PPArg_ *ppa;
+  struct GwfmtState *ls;
+} GwArg;
+
+ANN static bool run(GwArg *arg, const char *filename) {
+  FILE *file = fopen(filename, "r");
+  if (!file) {
+    gw_err("{R}gwfmt:{0} can't open file %s\n", filename);
+    return false;
+  }
+  struct AstGetter_ getter = { 
+    .name = (m_str)filename,
+    .f = file,
+    .st = arg->st,
+    .ppa = arg->ppa
+  };
+  bool ret = (!arg->ls->unpy ? gwfmt_gw : gwfmt_unpy)(&getter, arg->ls);
+  fclose(file);
+  printf("%s", arg->ls->text.str);
+  text_reset(&arg->ls->text);
+  return ret;
+}
+
+
+static void myproc(void *data, cmdopt_t *option, const char *arg) {
+  GwArg *gwarg = data;
+  struct GwfmtState *ls = gwarg->ls;
+  if (arg) run(gwarg, arg);
+  else {
+    switch (option->shorto) {
+      case 'i': // indent
+        ls->nindent = ARG2INT(option->value);
+        break;
+      case 'n': // pretty
+        ls->pretty = !ls->pretty;
+        break;
+      case 'h': // header
+        ls->header = !ls->header;
+        break;
+      case 'u': // unpy
+        ls->unpy = !ls->unpy;
+        break;
+      case 'r': // unpy
+        ls->onlypy = ls->unpy = !ls->unpy; // bool
+        break;
+      case 'M': // mark
+        ls->mark = ARG2INT(option->value);
+        break;
+      case 'e': // expand
+        gwarg->ppa->fmt = ARG2INT(option->value); // bool
+        break;
+      case 'm': // minify
+        ls->minimize = ARG2INT(option->value); // bool
+        break;
+      case 'c': // color
+        ls->color = !ls->color;
+        tcol_override_color_checks(ls->color);
+        break;
+    }
+  }
+}
+
+ANN static bool arg_parse(GwArg *a, int argc, char **argv) {
+  cmdapp_t            app;
+  const cmdapp_info_t info = {
+      .program         = "gwion",
+      .synopses        = NULL, // so it's automatic
+      .version         = GWFMT_VERSION,
+      .author          = "Jérémie Astor",
+      .year            = 2016,
+      .description     = "Pretty printer and minifier for the Gwion programming language.",
+      .help_des_offset = 32,
+      .ver_extra =
+          "License GPLv3+: GNU GPL version 3 or later "
+          "<https://gnu.org/licenses/gpl.html>\n"
+          "This is free software: you are free to change and redistribute it.\n"
+          "There is NO WARRANTY, to the extent permitted by law.\n"};
+  cmdapp_init(&app, argc, argv, CMDAPP_MODE_SHORTARG, &info);
+  cmdapp_enable_procedure(&app, myproc, a);
+  cmdopt_t opt[NOPTIONS];
+  setup_options(&app, opt);
+  bool ret = cmdapp_run(&app) == EXIT_SUCCESS && cmdapp_should_exit(&app);
+  //if (cmdapp_run(&app) == EXIT_SUCCESS && cmdapp_should_exit(&app))
+  //  arg->arg->quit = 1;
+  cmdapp_destroy(&app);
+  return ret;
+}
 
 int main(int argc, char **argv) {
   MemPool       mp  = mempool_ini(sizeof(struct Exp_));
@@ -77,49 +211,9 @@ int main(int argc, char **argv) {
   text_init(&ls.text, mp);
   int              ret = 0;
   tcol_override_color_checks(ls.color);
-  for (int i = 1; i < argc; ++i) {
-    if (!strcmp(argv[i], "-p")) {
-      ls.py = !ls.py;
-      continue;
-    } else if (!strcmp(argv[i], "-n")) {
-      ls.pretty = !ls.pretty;
-      continue;
-    } else if (!strcmp(argv[i], "-h")) {
-      ls.header = !ls.header;
-      continue;
-    } else if (!strncmp(argv[i], "-M", 2)) {
-      ls.mark = atoi(argv[i] + 2);
-      continue;
-    } else if (!strcmp(argv[i], "-u")) {
-      ls.unpy = !ls.unpy;
-      continue;
-    } else if (!strcmp(argv[i], "-e")) { // expand
-      ppa.fmt = !ppa.fmt;
-      continue;
-    } else if (!strcmp(argv[i], "-r")) { // only pythonify
-      ls.onlypy = ls.unpy = !ls.onlypy;
-      continue;
-    } else if (!strcmp(argv[i], "-m")) {
-      ls.minimize = 1;
-      ls.pretty = ls.onlypy = ls.unpy = false;
-      continue;
-    } else if (!strcmp(argv[i], "-c")) {
-      ls.color = !ls.color;
-      tcol_override_color_checks(ls.color);
-      continue;
-    } else if (!strncmp(argv[i], "-i", 2)) {
-      ls.nindent = atoi(argv[i] + 2);
-      continue;
-    }
-    FILE *file = fopen(argv[i], "r");
-    if (!file) continue;
-    struct AstGetter_ arg = {argv[i], file, st, .ppa = &ppa};
-    ret                   = (!ls.unpy ? gwfmt_gw : gwfmt_unpy)(&arg, &ls);
-    fclose(file);
-    printf("%s", ls.text.str);
-    text_reset(&ls.text);
-  }
-  // free_text
+  GwArg arg =  { .ls = &ls, .st = st, .ppa = &ppa };
+  argc--; argv++;
+  arg_parse(&arg, argc, argv);
   text_release(&ls.text);
   pparg_end(&ppa);
   free_symbols(st);
