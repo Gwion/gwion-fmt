@@ -90,27 +90,30 @@ enum {
 static void setup_options(cmdapp_t *app, cmdopt_t *opt) {
   cmdapp_set(app, 'i', "indent", CMDOPT_TAKESARG, NULL, "set lenght of indent in spaces",
              "integer", &opt[INDENT]);
-  cmdapp_set(app, 'n', "pretty", CMDOPT_MAYTAKEARG, NULL, "enable or disable pretty mode",
+  cmdapp_set(app, 'n', "pretty", CMDOPT_TAKESARG, NULL, "enable or disable pretty mode",
              "bool", &opt[PRETTY]);
-  cmdapp_set(app, 'p', "py", CMDOPT_MAYTAKEARG, NULL, "{/}pythonify{0}",
+  cmdapp_set(app, 'p', "py", CMDOPT_TAKESARG, NULL, "{/}pythonify{0}",
              "bool", &opt[PY]);
-  cmdapp_set(app, 'u', "unpy", CMDOPT_MAYTAKEARG, NULL, "{/}unpythonify{0}",
+  cmdapp_set(app, 'u', "unpy", CMDOPT_TAKESARG, NULL, "{/}unpythonify{0}",
              "bool", &opt[UNPY]);
-  cmdapp_set(app, 'r', "onlypy", CMDOPT_MAYTAKEARG, NULL, "enable or disable python mode only",
+  cmdapp_set(app, 'r', "onlypy", CMDOPT_TAKESARG, NULL, "enable or disable python mode only",
              "bool", &opt[HEADER]);
-  cmdapp_set(app, 'h', "header", CMDOPT_MAYTAKEARG, NULL, "enable or disable header mode",
+  cmdapp_set(app, 'h', "header", CMDOPT_TAKESARG, NULL, "enable or disable header mode",
              "bool", &opt[ONLYPY]);
   cmdapp_set(app, 'M', "mark", CMDOPT_TAKESARG, NULL, "mark a line",
              "integer", &opt[MARK]);
-  cmdapp_set(app, 'e', "expand", CMDOPT_MAYTAKEARG, NULL, "enable or disable lint mode",
+  cmdapp_set(app, 'e', "expand", CMDOPT_TAKESARG, NULL, "enable or disable lint mode",
              "bool", &opt[HEADER]);
-  cmdapp_set(app, 'm', "minify", CMDOPT_MAYTAKEARG, NULL, "minimize input",
+  cmdapp_set(app, 'm', "minify", CMDOPT_TAKESARG, NULL, "minimize input",
              "bool", &opt[MINIFY]);
   cmdapp_set(app, 'c', "color", CMDOPT_TAKESARG, NULL, "enable or disable {R}c{G}o{B}l{M}o{Y}r{C}s{0}",
              "{+}auto{-}/never/always", &opt[COLOR]);
 }
 
 #define ARG2INT(a) strtol(a, NULL, 10)
+ANN static inline bool arg2bool(const char *arg) {
+  return !strcmp(arg, "true");
+}
 
 typedef struct GwArg {
   SymTable *st;
@@ -157,19 +160,19 @@ static void myproc(void *data, cmdopt_t *option, const char *arg) {
         ls->unpy = !ls->unpy;
         break;
       case 'r': // unpy
-        ls->onlypy = ls->unpy = !ls->unpy; // bool
+        ls->onlypy = ls->unpy = arg2bool(option->value);
         break;
       case 'M': // mark
         ls->mark = ARG2INT(option->value);
         break;
       case 'e': // expand
-        gwarg->ppa->fmt = ARG2INT(option->value); // bool
+        gwarg->ppa->fmt = arg2bool(option->value);
         break;
       case 'm': // minify
-        ls->minimize = ARG2INT(option->value); // bool
+        ls->minimize = arg2bool(option->value);
         break;
       case 'c': // color
-        ls->color = !ls->color;
+        ls->color = arg2bool(option->value);
         tcol_override_color_checks(ls->color);
         break;
     }
