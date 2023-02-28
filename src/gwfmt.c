@@ -166,7 +166,7 @@ static void myproc(void *data, cmdopt_t *option, const char *arg) {
         ls->mark = ARG2INT(option->value);
         break;
       case 'e': // expand
-        gwarg->ppa->fmt = arg2bool(option->value);
+        gwarg->ppa->fmt = !arg2bool(option->value);
         break;
       case 'm': // minify
         ls->minimize = arg2bool(option->value);
