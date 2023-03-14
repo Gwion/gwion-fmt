@@ -1127,10 +1127,12 @@ ANN static void gwfmt_func_base(Gwfmt *a, Func_Base *b) {
 }
 
 ANN void gwfmt_func_def(Gwfmt *a, Func_Def b) {
+  /*
   if(fbflag(b->base, fbflag_compt)) {
     COLOR(a, "{+G}", "const");
     gwfmt_space(a);
   }
+  */
   if(fbflag(b->base, fbflag_locale))
     COLOR(a, "{+C}", "locale");
   else if(!fbflag(b->base, fbflag_op) && strcmp(s_name(b->base->xid), "new"))
