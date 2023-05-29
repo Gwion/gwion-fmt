@@ -1185,6 +1185,23 @@ ANN void gwfmt_class_def(Gwfmt *a, Class_Def b) {
   gwfmt_nl(a);
 }
 
+ANN static void gwfmt_enum_list(Gwfmt *a, Enum_List b) {
+    gwfmt_nl(a);
+  for(uint32_t i = 0; i < b->len; i++) {
+    EnumValue *ev = mp_vector_at(b, EnumValue, i);
+    gwfmt_indent(a);
+    if(ev->set) {
+      gwfmt_prim_num(a, (m_int*)&ev->num);
+      gwfmt_space(a);
+      gwfmt_op(a, insert_symbol(a->st, ":=>"));
+      gwfmt_space(a);
+    }
+    gwfmt_symbol(a, ev->xid);
+    if (!a->ls->minimize && (i == b->len - 1)) gwfmt_comma(a);
+    gwfmt_nl(a);
+  }
+}
+
 ANN void gwfmt_enum_def(Gwfmt *a, Enum_Def b) {
   COLOR(a, "{+C}", "enum");
   gwfmt_space(a);
@@ -1192,10 +1209,9 @@ ANN void gwfmt_enum_def(Gwfmt *a, Enum_Def b) {
   COLOR(a, "{/}", s_name(b->xid));
   gwfmt_space(a);
   gwfmt_lbrace(a);
-  gwfmt_space(a);
-  gwfmt_id_list(a, b->list);
-  gwfmt_space(a);
-  if (!a->ls->minimize) gwfmt_comma(a);
+  a->indent++;
+  gwfmt_enum_list(a, b->list);
+  a->indent--;
   gwfmt_rbrace(a);
   gwfmt_nl(a);
 }
