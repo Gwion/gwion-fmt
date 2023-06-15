@@ -384,9 +384,103 @@ ANN static void gwfmt_type_decl(Gwfmt *a, Type_Decl *b) {
 
 ANN static void gwfmt_prim_id(Gwfmt *a, Symbol *b) { gwfmt_symbol(a, *b); }
 
-ANN static void gwfmt_prim_num(Gwfmt *a, m_int *b) {
+
+#define INTEGER_ADVANCE(a, tgt, src, n) \
+do {                                    \
+  memcpy(tgt, src, n);                  \
+  gwfmt(a, tgt);                        \
+  str += n;                             \
+} while(0)
+
+#define INTEGER_PAD(a, t, n)            \
+do {                                    \
+  for(int i = 0; i < (t - n); i++)      \
+    gwfmt(a, "0");                      \
+} while(0)
+
+ANN static void gwfmt_decimal(Gwfmt *a, m_int num) {
+  char c[1024];
+  char *str = c;
+  snprintf(str, 1023, "%" INT_F, num);
+  const size_t sz = strlen(str);
+  int start = sz % 3;
+  char tmp[4] = {};
+  if(start) INTEGER_ADVANCE(a, tmp, str, start);
+  for(size_t i = start; i < sz; i += 3) {
+    if(start++) gwfmt_space(a);
+    INTEGER_ADVANCE(a, tmp, str, 3);
+  }
+}
+
+static char *tobinary(char *tmp, m_uint a) {
+  if (a > 1)
+      tmp = tobinary(tmp, a / 2);
+  *tmp = (a % 2) + '0';
+  return tmp + 1;
+}
+
+ANN static void gwfmt_binary(Gwfmt *a, m_int num) {
+  gwfmt(a, "0b");
+  char c[1024] = {};
+  char *str = c;
+  tobinary(c, num);
+  const size_t sz = strlen(str);
+  int start = sz % 4;
+  char tmp[5] = {};
+  if(start) {
+    INTEGER_PAD(a, 4, start);
+    INTEGER_ADVANCE(a, tmp, str, start);
+  }
+  for(size_t i = start; i < sz; i += 4) {
+    if(start++) gwfmt_space(a);
+    INTEGER_ADVANCE(a, tmp, str, 4);
+  }
+}
+
+ANN static void gwfmt_hexa(Gwfmt *a, m_int num) {
+  gwfmt(a, "0x");
+  char c[1024] = {};
+  char *str = c;
+  snprintf(str, 1023, "%lX", num);
+  const size_t sz = strlen(str);
+  int start = sz % 2;
+  char tmp[3] = {};
+  if(start) {
+    INTEGER_PAD(a, 2, start);
+    INTEGER_ADVANCE(a, tmp, str, start);
+  }
+  for(size_t i = start; i < sz; i += 2) {
+    if(start++) gwfmt_space(a);
+    INTEGER_ADVANCE(a, tmp, str, 2);
+  }
+}
+
+ANN static void gwfmt_octal(Gwfmt *a, m_int num) {
+  gwfmt(a, "0o");
+  char c[1024] = {};
+  char *str = c;
+  snprintf(str, 1023, "%lo", num);
+  const size_t sz = strlen(str);
+  int start = sz % 3;
+  char tmp[4] = {};
+  if(start) {
+    INTEGER_PAD(a, 3, start);
+    INTEGER_ADVANCE(a, tmp, str, start);
+  }
+  for(size_t i = start; i < sz; i += 3) {
+    if(start++) gwfmt_space(a);
+    INTEGER_ADVANCE(a, tmp, str, 3);
+  }
+}
+
+ANN static void gwfmt_prim_num(Gwfmt *a, struct gwint *b) {
   color(a, "{M}");
-  gwfmt(a, "%" INT_F, *b);
+  switch(b->int_type) {
+    case gwint_decimal: gwfmt_decimal(a, b->num); break;
+    case gwint_binary:  gwfmt_binary(a, b->num); break;
+    case gwint_hexa:    gwfmt_hexa(a, b->num); break;
+    case gwint_octal:   gwfmt_octal(a, b->num); break;
+  }
   color(a, "{0}");
 }
 
@@ -923,7 +1017,8 @@ ANN static void gwfmt_stmt_break(Gwfmt *a, Stmt_Index b) {
   COLOR(a, "{+M}", "break");
   if (b->idx) {
     gwfmt_space(a);
-    gwfmt_prim_num(a, &b->idx);
+    struct gwint gwint = GWINT(b->idx, gwint_decimal);
+    gwfmt_prim_num(a, &gwint);
   }
   gwfmt_sc(a);
 }
@@ -932,7 +1027,8 @@ ANN static void gwfmt_stmt_continue(Gwfmt *a, Stmt_Index b) {
   COLOR(a, "{+M}", "continue");
   if (b->idx) {
     gwfmt_space(a);
-    gwfmt_prim_num(a, &b->idx);
+    struct gwint gwint = GWINT(b->idx, gwint_decimal);
+    gwfmt_prim_num(a, &gwint);
   }
   gwfmt_sc(a);
 }
@@ -1191,7 +1287,7 @@ ANN static void gwfmt_enum_list(Gwfmt *a, Enum_List b) {
     EnumValue *ev = mp_vector_at(b, EnumValue, i);
     gwfmt_indent(a);
     if(ev->set) {
-      gwfmt_prim_num(a, (m_int*)&ev->num);
+      gwfmt_prim_num(a, &ev->gwint);
       gwfmt_space(a);
       gwfmt_op(a, insert_symbol(a->st, ":=>"));
       gwfmt_space(a);
@@ -1295,7 +1391,8 @@ ANN void gwfmt_prim_def(Gwfmt *a, Prim_Def b) {
   gwfmt_flag(a, b);
   COLOR(a, "{+W}", s_name(b->name));
   gwfmt_space(a);
-  gwfmt_prim_num(a, (m_int*)&b->size);
+  struct gwint gwint = GWINT(b->size, gwint_decimal);
+  gwfmt_prim_num(a, &gwint);
   gwfmt_sc(a);
   gwfmt_nl(a);
 }
