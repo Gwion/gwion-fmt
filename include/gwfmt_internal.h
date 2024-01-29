@@ -47,7 +47,7 @@ ANN static void gwfmt_stmt_pp(Gwfmt *a, Stmt_PP b);
 ANN static void gwfmt_stmt_defer(Gwfmt *a, Stmt_Defer b);
 ANN static void gwfmt_stmt(Gwfmt *a, Stmt b);
 ANN /*static */void gwfmt_arg_list(Gwfmt *a, Arg_List b, const bool);
-ANN static void gwfmt_union_list(Gwfmt *a, Union_List b);
+ANN static void gwfmt_variable_list(Gwfmt *a, Variable_List b);
 ANN static void gwfmt_stmt_list(Gwfmt *a, Stmt_List b);
 ANN static void gwfmt_func_base(Gwfmt *a, Func_Base *b);
 ANN static void gwfmt_section(Gwfmt *a, Section *b);

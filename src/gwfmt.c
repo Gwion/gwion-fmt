@@ -19,7 +19,7 @@ ANN static int gwfmt_gw(struct AstGetter_ *arg, struct GwfmtState *ls) {
     if (l.ls->header) {
       gwfmt_util(&l, "       {N}┏━━━{0} ");
       gwfmt_file(&l, arg->name);
-      gwfmt_util(&l, "{0}  {-}     {N}┃{0}");
+      gwfmt_util(&l, "{0}  {-}     {0}{N}┃{0}");
     }
     gwfmt_nl(&l);
   } else if (l.ls->header) {
@@ -33,7 +33,7 @@ ANN static int gwfmt_gw(struct AstGetter_ *arg, struct GwfmtState *ls) {
     if(!ls->minimize)
       gwfmt_util(&l, "\b\b\b\b\b\b\b");
     if (l.ls->header) {
-      gwfmt_util(&l, "{0}{-}     {N}┃{0}\n");
+      gwfmt_util(&l, "{0}{-}     {0}{N}┃{0}\n");
       gwfmt_util(&l, "       {N}┗━━━{0}\n");
     }
   }
