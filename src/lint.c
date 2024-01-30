@@ -764,7 +764,7 @@ ANN static void gwfmt_exp_lambda(Gwfmt *a, Exp_Lambda *b) {
     else {
       gwfmt_lbrace(a);
       gwfmt_space(a);
-      gwfmt_exp(a, mp_vector_at(code, struct Stmt_, 0)->d.stmt_exp.val);
+      gwfmt_exp(a, mp_vector_at(code, Stmt, 0)->d.stmt_exp.val);
       gwfmt_space(a);
       gwfmt_rbrace(a);
     }
@@ -1049,7 +1049,7 @@ ANN static void gwfmt_stmt_return(Gwfmt *a, Stmt_Exp b) {
 
 ANN static void gwfmt_case_list(Gwfmt *a, Stmt_List b) {
   for(uint32_t i = 0; i < b->len; i++) {
-    Stmt* stmt = mp_vector_at(b, struct Stmt_, i);
+    Stmt* stmt = mp_vector_at(b, Stmt, i);
     gwfmt_stmt_case(a, &stmt->d.stmt_match);
     if(i < b->len - 1) gwfmt_nl(a);
   }
@@ -1092,7 +1092,7 @@ ANN static void gwfmt_stmt_case(Gwfmt *a, Stmt_Match b) {
     INDENT(a, gwfmt_stmt_list(a, b->list))
   else {
     gwfmt_space(a);
-    Stmt* stmt = mp_vector_at(b->list, struct Stmt_, 0);
+    Stmt* stmt = mp_vector_at(b->list, Stmt, 0);
     gwfmt_stmt_func[stmt->stmt_type](a, &stmt->d);
   }
 }
@@ -1196,7 +1196,7 @@ ANN static void gwfmt_variable_list(Gwfmt *a, Variable_List b) {
 
 ANN static void gwfmt_stmt_list(Gwfmt *a, Stmt_List b) {
   for(uint32_t i = 0; i < b->len; i++) {
-    Stmt* stmt = mp_vector_at(b, struct Stmt_, i);
+    Stmt* stmt = mp_vector_at(b, Stmt, i);
     if (stmt->stmt_type != ae_stmt_exp || stmt->d.stmt_exp.val)
       gwfmt_stmt(a, stmt);
   }
