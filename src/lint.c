@@ -262,7 +262,7 @@ ANN static void gwfmt_specialized_list(Gwfmt *a, Specialized_List b) {
   }
 }
 
-ANN static void _gwfmt_type_list(Gwfmt *a, Type_List b) {
+ANN static void _gwfmt_tmplarg_list(Gwfmt *a, TmplArg_List b) {
   for(uint32_t i = 0; i < b->len; i++) {
     TmplArg targ = *mp_vector_at(b, TmplArg, i);
     if (targ.type == tmplarg_td)
@@ -277,10 +277,10 @@ ANN static void _gwfmt_type_list(Gwfmt *a, Type_List b) {
 
 ANN static inline void gwfmt_init_tmpl(Gwfmt *a) { COLOR(a, "{-}",":["); }
 
-ANN static void gwfmt_type_list(Gwfmt *a, Type_List b) {
+ANN static void gwfmt_tmplarg_list(Gwfmt *a, TmplArg_List b) {
   gwfmt_init_tmpl(a);
   gwfmt_space(a);
-  _gwfmt_type_list(a, b);
+  _gwfmt_tmplarg_list(a, b);
   gwfmt_space(a);
   gwfmt_rbrack(a);
 }
@@ -293,7 +293,7 @@ ANN static void gwfmt_tmpl(Gwfmt *a, Tmpl *b) {
     gwfmt_space(a);
     gwfmt_rbrack(a);
   }
-  if (b->call) gwfmt_type_list(a, b->call);
+  if (b->call) gwfmt_tmplarg_list(a, b->call);
 }
 
 ANN static void gwfmt_range(Gwfmt *a, Range *b) {
@@ -381,7 +381,7 @@ ANN static void gwfmt_type_decl(Gwfmt *a, Type_Decl *b) {
     //    COLOR(a, "{C}", s_name(b->xid));
   } else if (b->tag.sym)
     COLOR(a, "{C}", s_name(b->tag.sym));
-  if (b->types) gwfmt_type_list(a, b->types);
+  if (b->types) gwfmt_tmplarg_list(a, b->types);
   for (m_uint i = 0; i < b->option; ++i) gwfmt(a, "?");
   if (b->array) gwfmt_array_sub2(a, b->array);
   if (b->next) {
@@ -571,11 +571,6 @@ ANN static void gwfmt_prim_hack(Gwfmt *a, Exp *b) {
   COLOR(a, "{-R}", ">>>");
 }
 
-ANN static void gwfmt_prim_typeof(Gwfmt *a, Exp *b) {
-  COLOR(a, "{+C}", "typeof");
-  paren_exp(a, *b);
-}
-
 ANN static void gwfmt_prim_char(Gwfmt *a, m_str *b) {
   color(a, "{M}");
   gwfmt(a, "'%s'", *b);
@@ -654,7 +649,7 @@ ANN static void gwfmt_captures(Gwfmt *a, Capture_List b) {
   for (uint32_t i = 0; i < b->len; i++) {
     Capture *cap = mp_vector_at(b, Capture, i);
     if(cap->is_ref) gwfmt(a, "&");
-    gwfmt_symbol(a, cap->tag.sym);
+    gwfmt_symbol(a, cap->var.tag.sym);
     gwfmt_space(a);
   }
   gwfmt(a, ":");
@@ -959,7 +954,7 @@ ANN static void gwfmt_stmt_each(Gwfmt *a, Stmt_Each b) {
   COLOR(a, "{+M}", "foreach");
   gwfmt_lparen(a);
   if(b->idx) {
-    gwfmt_symbol(a, b->idx->tag.sym);
+    gwfmt_symbol(a, b->idx->var.tag.sym);
     gwfmt_comma(a);
     gwfmt_space(a);
   }
@@ -977,7 +972,7 @@ ANN static void gwfmt_stmt_loop(Gwfmt *a, Stmt_Loop b) {
   COLOR(a, "{+M}", "repeat");
   gwfmt_lparen(a);
   if (b->idx) {
-    gwfmt_symbol(a, b->idx->tag.sym);
+    gwfmt_symbol(a, b->idx->var.tag.sym);
     gwfmt_comma(a);
     gwfmt_space(a);
   }
@@ -1291,7 +1286,7 @@ ANN void gwfmt_class_def(Gwfmt *a, Class_Def b) {
   gwfmt_nl(a);
 }
 
-ANN static void gwfmt_enum_list(Gwfmt *a, Enum_List b) {
+ANN static void gwfmt_enum_list(Gwfmt *a, EnumValue_List b) {
     gwfmt_nl(a);
   for(uint32_t i = 0; i < b->len; i++) {
     EnumValue *ev = mp_vector_at(b, EnumValue, i);

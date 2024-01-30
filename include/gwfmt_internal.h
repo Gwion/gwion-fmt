@@ -1,7 +1,7 @@
 ANN static void gwfmt_symbol(Gwfmt *a, Symbol b);
 ANN static void gwfmt_array_sub(Gwfmt *a, Array_Sub b);
 ANN static void gwfmt_id_list(Gwfmt *a, ID_List b);
-ANN static void gwfmt_type_list(Gwfmt *a, Type_List b);
+ANN static void gwfmt_tmplarg_list(Gwfmt *a, TmplArg_List b);
 ANN static void gwfmt_tmpl(Gwfmt *a, Tmpl *b);
 ANN static void gwfmt_range(Gwfmt *a, Range *b);
 ANN static void gwfmt_type_decl(Gwfmt *a, Type_Decl *b);
@@ -12,7 +12,6 @@ ANN static void gwfmt_prim_str(Gwfmt *a, struct AstString *b);
 ANN static void gwfmt_prim_array(Gwfmt *a, Array_Sub *b);
 ANN static void gwfmt_prim_range(Gwfmt *a, Range **b);
 ANN static void gwfmt_prim_hack(Gwfmt *a, Exp *b);
-ANN static void gwfmt_prim_typeof(Gwfmt *a, Exp *b);
 ANN static void gwfmt_prim_interp(Gwfmt *a, Exp *b);
 ANN static void gwfmt_prim_char(Gwfmt *a, m_str *b);
 ANN static void gwfmt_prim_nil(Gwfmt *a, void *b);
