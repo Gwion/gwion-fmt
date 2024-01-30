@@ -987,7 +987,7 @@ ANN static void gwfmt_stmt_loop(Gwfmt *a, Stmt_Loop b) {
   }
 }
 
-ANN static void gwfmt_code(Gwfmt *a, Stmt b) {
+ANN static void gwfmt_code(Gwfmt *a, Stmt* b) {
   if (b->stmt_type == ae_stmt_if || b->stmt_type == ae_stmt_code ||
       (b->stmt_type == ae_stmt_exp && !b->d.stmt_exp.val)) {
     gwfmt_space(a);
@@ -1049,7 +1049,7 @@ ANN static void gwfmt_stmt_return(Gwfmt *a, Stmt_Exp b) {
 
 ANN static void gwfmt_case_list(Gwfmt *a, Stmt_List b) {
   for(uint32_t i = 0; i < b->len; i++) {
-    const Stmt stmt = mp_vector_at(b, struct Stmt_, i);
+    Stmt* stmt = mp_vector_at(b, struct Stmt_, i);
     gwfmt_stmt_case(a, &stmt->d.stmt_match);
     if(i < b->len - 1) gwfmt_nl(a);
   }
@@ -1092,7 +1092,7 @@ ANN static void gwfmt_stmt_case(Gwfmt *a, Stmt_Match b) {
     INDENT(a, gwfmt_stmt_list(a, b->list))
   else {
     gwfmt_space(a);
-    const Stmt stmt = mp_vector_at(b->list, struct Stmt_, 0);
+    Stmt* stmt = mp_vector_at(b->list, struct Stmt_, 0);
     gwfmt_stmt_func[stmt->stmt_type](a, &stmt->d);
   }
 }
@@ -1154,7 +1154,7 @@ ANN static void gwfmt_stmt_defer(Gwfmt *a, Stmt_Defer b) {
 //  a->skip_indent--;
 }
 
-ANN static void gwfmt_stmt(Gwfmt *a, Stmt b) {
+ANN static void gwfmt_stmt(Gwfmt *a, Stmt* b) {
   const uint skip_indent = a->skip_indent;
   if (b->stmt_type != ae_stmt_pp) gwfmt_indent(a);
   gwfmt_stmt_func[b->stmt_type](a, &b->d);
@@ -1196,7 +1196,7 @@ ANN static void gwfmt_variable_list(Gwfmt *a, Variable_List b) {
 
 ANN static void gwfmt_stmt_list(Gwfmt *a, Stmt_List b) {
   for(uint32_t i = 0; i < b->len; i++) {
-    Stmt stmt = mp_vector_at(b, struct Stmt_, i);
+    Stmt* stmt = mp_vector_at(b, struct Stmt_, i);
     if (stmt->stmt_type != ae_stmt_exp || stmt->d.stmt_exp.val)
       gwfmt_stmt(a, stmt);
   }
