@@ -45,7 +45,7 @@ ANN void gwfmt_lparen(Gwfmt *a);
 ANN void gwfmt_rparen(Gwfmt *a);
 ANN void gwfmt_lbrace(Gwfmt *a);
 ANN void gwfmt_rbrace(Gwfmt *a);
-ANN void gwfmt_exp(Gwfmt *a, Exp b);
+ANN void gwfmt_exp(Gwfmt *a, Exp* b);
 ANN void gwfmt_func_def(Gwfmt *a, Func_Def b);
 ANN void gwfmt_class_def(Gwfmt *a, Class_Def b);
 ANN void gwfmt_enum_def(Gwfmt *a, Enum_Def b);

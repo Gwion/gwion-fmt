@@ -167,10 +167,10 @@ ANN void gwfmt_indent(Gwfmt *a) {
   }
 }
 
-ANN static void paren_exp(Gwfmt *a, Exp b);
-ANN static void maybe_paren_exp(Gwfmt *a, Exp b);
+ANN static void paren_exp(Gwfmt *a, Exp* b);
+ANN static void maybe_paren_exp(Gwfmt *a, Exp* b);
 ANN static void gwfmt_array_sub2(Gwfmt *a, Array_Sub b);
-ANN static void gwfmt_prim_interp(Gwfmt *a, Exp *b);
+ANN static void gwfmt_prim_interp(Gwfmt *a, Exp* *b);
 
 #define _FLAG(a, b) (((a)&ae_flag_##b) == (ae_flag_##b))
 ANN static void gwfmt_flag(Gwfmt *a, ae_flag b) {
@@ -306,13 +306,13 @@ ANN static void gwfmt_range(Gwfmt *a, Range *b) {
   gwfmt_rbrack(a);
 }
 
-ANN static void gwfmt_prim_dict(Gwfmt *a, Exp *b) {
-  Exp e = *b;
+ANN static void gwfmt_prim_dict(Gwfmt *a, Exp* *b) {
+  Exp* e = *b;
   gwfmt_lbrace(a);
   gwfmt_space(a);
   do {
-    const Exp next  = e->next;
-    const Exp nnext = next->next;
+    Exp* next  = e->next;
+    Exp* nnext = next->next;
     e->next = NULL;
     next->next = NULL;
     gwfmt_exp(a, e);
@@ -563,7 +563,7 @@ ANN static void gwfmt_prim_array(Gwfmt *a, Array_Sub *b) {
 
 ANN static void gwfmt_prim_range(Gwfmt *a, Range **b) { gwfmt_range(a, *b); }
 
-ANN static void gwfmt_prim_hack(Gwfmt *a, Exp *b) {
+ANN static void gwfmt_prim_hack(Gwfmt *a, Exp* *b) {
   COLOR(a, "{-R}", "<<<");
   gwfmt_space(a);
   gwfmt_exp(a, *b);
@@ -772,15 +772,15 @@ ANN static void gwfmt_exp_lambda(Gwfmt *a, Exp_Lambda *b) {
 }
 
 DECL_EXP_FUNC(gwfmt, void, Gwfmt *)
-ANN void gwfmt_exp(Gwfmt *a, Exp b) {
+ANN void gwfmt_exp(Gwfmt *a, Exp* b) {
   if(b->paren) gwfmt_lparen(a);
   gwfmt_exp_func[b->exp_type](a, &b->d);
   if(b->paren) gwfmt_rparen(a);
   NEXT(a, b, gwfmt_exp)
 }
 
-ANN static void gwfmt_prim_interp(Gwfmt *a, Exp *b) {
-  Exp e = *b;
+ANN static void gwfmt_prim_interp(Gwfmt *a, Exp* *b) {
+  Exp* e = *b;
   const uint16_t delim = e->d.prim.d.string.delim;
   gwfmt_delim(a, delim);
   color(a, "{/Y}");
@@ -802,7 +802,7 @@ ANN static void gwfmt_prim_interp(Gwfmt *a, Exp *b) {
 }
 
 ANN static void gwfmt_array_sub2(Gwfmt *a, Array_Sub b) {
-  Exp e = b->exp;
+  Exp* e = b->exp;
   for (m_uint i = 0; i < b->depth; ++i) {
     gwfmt_lbrack(a);
     if (e) {
@@ -813,7 +813,7 @@ ANN static void gwfmt_array_sub2(Gwfmt *a, Array_Sub b) {
   }
 }
 
-ANN static void paren_exp(Gwfmt *a, Exp b) {
+ANN static void paren_exp(Gwfmt *a, Exp* b) {
   gwfmt_lparen(a);
   //if(b->exp_type != ae_exp_primary &&
   //   b->d.prim.prim_type != ae_prim_nil)
@@ -821,7 +821,7 @@ ANN static void paren_exp(Gwfmt *a, Exp b) {
   gwfmt_rparen(a);
 }
 
-ANN static void maybe_paren_exp(Gwfmt *a, Exp b) {
+ANN static void maybe_paren_exp(Gwfmt *a, Exp* b) {
   if (b->next)
     paren_exp(a, b);
   else

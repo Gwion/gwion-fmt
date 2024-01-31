@@ -206,7 +206,7 @@ ANN static bool arg_parse(GwArg *a, int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
-  MemPool       mp  = mempool_ini(sizeof(struct Exp_));
+  MemPool       mp  = mempool_ini(sizeof(Exp));
   SymTable *    st  = new_symbol_table(mp, 65347); // could be smaller
   struct PPArg_ ppa = {.fmt = 1};
   pparg_ini(mp, &ppa);
