@@ -4,7 +4,6 @@ ANN static void gwfmt_id_list(Gwfmt *a, ID_List b);
 ANN static void gwfmt_tmplarg_list(Gwfmt *a, TmplArg_List b);
 ANN static void gwfmt_tmpl(Gwfmt *a, Tmpl *b);
 ANN static void gwfmt_range(Gwfmt *a, Range *b);
-ANN static void gwfmt_type_decl(Gwfmt *a, Type_Decl *b);
 ANN static void gwfmt_prim_id(Gwfmt *a, Symbol *b);
 ANN static void gwfmt_prim_num(Gwfmt *a, struct gwint *b);
 ANN static void gwfmt_prim_float(Gwfmt *a, m_float *b);

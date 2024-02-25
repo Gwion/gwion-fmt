@@ -354,7 +354,7 @@ ANN static void gwfmt_effects(Gwfmt *a, Vector b) {
   gwfmt_effect(a, (Symbol)vector_back(b));
 }
 
-ANN static void gwfmt_type_decl(Gwfmt *a, Type_Decl *b) {
+ANN void gwfmt_type_decl(Gwfmt *a, const Type_Decl *b) {
   if (GET_FLAG(b, const)) {
     COLOR(a, "{+G}", "const");
     gwfmt_space(a);
@@ -953,12 +953,12 @@ ANN static void gwfmt_stmt_for(Gwfmt *a, Stmt_For b) {
 ANN static void gwfmt_stmt_each(Gwfmt *a, Stmt_Each b) {
   COLOR(a, "{+M}", "foreach");
   gwfmt_lparen(a);
-  if(b->idx) {
-    gwfmt_symbol(a, b->idx->var.tag.sym);
+  if(b->idx.tag.sym) {
+    gwfmt_symbol(a, b->idx.tag.sym);
     gwfmt_comma(a);
     gwfmt_space(a);
   }
-  gwfmt_symbol(a, b->tag.sym);
+  gwfmt_symbol(a, b->var.tag.sym);
   gwfmt_space(a);
   COLOR(a, "{-}", ":");
   gwfmt_space(a);
@@ -971,8 +971,8 @@ ANN static void gwfmt_stmt_each(Gwfmt *a, Stmt_Each b) {
 ANN static void gwfmt_stmt_loop(Gwfmt *a, Stmt_Loop b) {
   COLOR(a, "{+M}", "repeat");
   gwfmt_lparen(a);
-  if (b->idx) {
-    gwfmt_symbol(a, b->idx->var.tag.sym);
+  if (b->idx.tag.sym) {
+    gwfmt_symbol(a, b->idx.tag.sym);
     gwfmt_comma(a);
     gwfmt_space(a);
   }

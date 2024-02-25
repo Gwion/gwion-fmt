@@ -54,3 +54,4 @@ ANN void gwfmt_fptr_def(Gwfmt *a, Fptr_Def b);
 ANN void gwfmt_type_def(Gwfmt *a, Type_Def b);
 ANN void gwfmt_prim_def(Gwfmt *a, Prim_Def b);
 ANN void gwfmt_ast(Gwfmt *a, Ast b);
+ANN void gwfmt_type_decl(Gwfmt *a, const Type_Decl *b);
