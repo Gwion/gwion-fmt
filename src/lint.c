@@ -887,6 +887,7 @@ ANN static void gwfmt_stmt_spread(Gwfmt *a, Spread_Def b) {
   a->indent--;
   gwfmt_indent(a);
   gwfmt_rbrace(a);
+  gwfmt(a, "...");
   gwfmt_nl(a);
 }
 
