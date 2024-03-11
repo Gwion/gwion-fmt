@@ -593,7 +593,7 @@ ANN static void gwfmt_prim(Gwfmt *a, Exp_Primary *b) {
   gwfmt_prim_func[b->prim_type](a, &b->d);
 }
 
-ANN static void gwfmt_var_decl(Gwfmt *a, Var_Decl *b) {
+ANN static void gwfmt_var_decl(Gwfmt *a, const Var_Decl *b) {
   if (b->tag.sym) COLOR(a, "{W+}", s_name(b->tag.sym));
 }
 
@@ -1162,14 +1162,17 @@ ANN static void gwfmt_stmt(Gwfmt *a, Stmt* b) {
   if (!skip_indent) gwfmt_nl(a);
 }
 
+ANN void gwfmt_variable(Gwfmt *a, const Variable *b) {
+  if (b->td) {
+    gwfmt_type_decl(a, b->td);
+    if (b->vd.tag.sym) gwfmt_space(a);
+   }
+  gwfmt_var_decl(a, &b->vd);
+}
 ANN /*static */void gwfmt_arg_list(Gwfmt *a, Arg_List b, const bool locale) {
   for(uint32_t i = locale; i < b->len; i++) {
     Arg *arg = mp_vector_at(b, Arg, i);
-    if (arg->var.td) {
-      gwfmt_type_decl(a, arg->var.td);
-      if (arg->var.vd.tag.sym) gwfmt_space(a);
-    }
-    gwfmt_var_decl(a, &arg->var.vd);
+    gwfmt_variable(a, &arg->var);
     if (arg->exp) {
       gwfmt_space(a);
       gwfmt(a, ":");
@@ -1187,9 +1190,7 @@ ANN static void gwfmt_variable_list(Gwfmt *a, Variable_List b) {
   for(uint32_t i = 0; i < b->len; i++) {
     Variable *um = mp_vector_at(b, Variable, i);
     gwfmt_indent(a);
-    gwfmt_type_decl(a, um->td);
-    gwfmt_space(a);
-    gwfmt_var_decl(a, &um->vd);
+    gwfmt_variable(a, um);
     gwfmt_sc(a);
     gwfmt_nl(a);
   }
@@ -1248,8 +1249,8 @@ ANN void gwfmt_func_def(Gwfmt *a, Func_Def b) {
     gwfmt_nl(a);
     return;
   }
-  gwfmt_space(a);
   if (!GET_FLAG(b->base, abstract) && b->d.code) {
+    gwfmt_space(a);
     gwfmt_lbrace(a);
     gwfmt_nl(a);
     INDENT(a, gwfmt_stmt_list(a, b->d.code));

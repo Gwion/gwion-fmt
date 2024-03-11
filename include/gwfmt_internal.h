@@ -15,7 +15,7 @@ ANN static void gwfmt_prim_interp(Gwfmt *a, Exp* *b);
 ANN static void gwfmt_prim_char(Gwfmt *a, m_str *b);
 ANN static void gwfmt_prim_nil(Gwfmt *a, void *b);
 ANN static void gwfmt_prim(Gwfmt *a, Exp_Primary *b);
-ANN static void gwfmt_var_decl(Gwfmt *a, Var_Decl *b);
+ANN static void gwfmt_var_decl(Gwfmt *a, const Var_Decl *b);
 ANN static void gwfmt_exp_decl(Gwfmt *a, Exp_Decl *b);
 ANN static void gwfmt_exp_binary(Gwfmt *a, Exp_Binary *b);
 ANN static void gwfmt_exp_unary(Gwfmt *a, Exp_Unary *b);
