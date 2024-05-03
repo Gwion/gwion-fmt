@@ -1,3 +1,7 @@
+#include <gwion_util.h>
+#include <gwion_ast.h>
+#include <gwfmt.h>
+
 ANN static void gwfmt_symbol(Gwfmt *a, Symbol b);
 ANN static void gwfmt_array_sub(Gwfmt *a, Array_Sub b);
 ANN static void gwfmt_id_list(Gwfmt *a, ID_List b);

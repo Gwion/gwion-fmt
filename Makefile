@@ -4,27 +4,18 @@ PRG := gwfmt
 CFLAGS += -O3
 
 # Warnings
-CFLAGS += -Wall -Wextra -Wno-unused
+CFLAGS += -Wall -Wextra
 
 # Includes
 CFLAGS += -I../util/include
 CFLAGS += -I../ast/include
-CFLAGS += -I../ast/libprettyerr/src
+CFLAGS += -I../include
 CFLAGS += -Iinclude
 
 # Libraries
 LDFLAGS += -L../util
 LDFLAGS += -L../ast
-LDFLAGS += -L../ast/libprettyerr
-
-#CFLAGS += -flto -Ofast
-#LDFLAGS += -flto
-
-LDFLAGS += -lprettyerr
-
-ifneq ($(shell uname), Darwin)
-LDFLAGS += -static
-endif
+LDFLAGS += -L../
 
 ifeq ($(shell uname), Darwin)
 AR = /usr/bin/libtool
@@ -42,10 +33,10 @@ endif
 
 all: ${PRG}
 
-${PRG}: src/${PRG}.o src/unpy.o libgwion_fmt.a
-	${CC} ${CFLAGS} $^ -Iinclude -lgwion_ast -lgwion_util ${LDFLAGS} -lpthread -lm -o $@
+${PRG}: src/${PRG}.o src/unpy.o src/gwion_config.o libgwion_fmt.a
+	${CC} ${DEPFLAGS} ${CFLAGS} $^ -Iinclude -lgwion -lgwion_ast -lgwion_util ${LDFLAGS} -ldl -lpthread -lm -o $@
 
-libgwion_fmt.a: src/lint.o
+libgwion_fmt.a: src/lint.o src/casing.o
 	${AR} ${AR_OPT}
 
 src/unpy.c: src/unpy.l
@@ -63,3 +54,13 @@ uninstall:
 	rm ${PREFIX}/bin/${PRG}
 	rm ${PREFIX}/lib/lib${PRG}.a
 	rm ${PREFIX}/include/${PRG}.h
+
+.c.o:
+	$(info compile $(<:.c=))
+	@${CC} $(DEPFLAGS) ${CFLAGS} ${PACKAGE_INFO} ${INSTALL_PREFIX} -c $< -o $(<:.c=.o)
+	@mv -f $(DEPDIR)/$(@F:.o=.Td) $(DEPDIR)/$(@F:.o=.d) && touch $@
+	@echo $@: config.mk >> $(DEPDIR)/$(@F:.o=.d)
+
+DEPDIR := .d
+$(shell mkdir -p $(DEPDIR) >/dev/null)
+DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$(@F:.o=.Td)

@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include "gwion_util.h"
 #include "gwion_ast.h"
+#define LINT_IMPL
 #include "gwfmt.h"
 #include "gwfmt_internal.h"
 #include "unpy.h"
@@ -22,7 +23,7 @@ ANN void gwfmt_set_func(int (*f)(const char*, ...)) {
   _print = f;
 }
 
-ANN static enum char_type cht(const char c) {
+ANN static enum gwfmt_char_type cht(const char c) {
   if (isalnum(c) || c == '_') return cht_id;
   if (c == ':') return cht_colon;
   if (c == '[') return cht_lbrack;
@@ -39,20 +40,65 @@ ANN static enum char_type cht(const char c) {
   return cht_sp;
 }
 
-ANN void color(Gwfmt *a, const m_str buf) {
+ANN void color(Gwfmt *a, const char *buf) {
   char tmp[strlen(buf)*4];
   tcol_snprintf(tmp, strlen(buf)*4, buf);
   text_add(&a->ls->text, tmp);
 }
 
-void COLOR(Gwfmt *a, const m_str b, const m_str c) {
+ANN void reset_color(Gwfmt *a);
+
+void COLOR(Gwfmt *a, const char *b, const char *c) {
   color(a, b);
   gwfmt(a, c);
+  reset_color(a);
+}
+
+ANN void reset_color(Gwfmt *a) {
   color(a, "{0}");
 }
 
-ANN void gwfmt_util(Gwfmt *a, const m_str fmt, ...) {
-  va_list ap, aq;
+void keyword(Gwfmt *a, const char *kw) {
+  COLOR(a, a->ls->colors[KeywordColor], kw);
+}
+
+void flow(Gwfmt *a, const char *kw) {
+  COLOR(a, a->ls->colors[FlowColor], kw);
+}
+ANN static void check_tag(Gwfmt *a, const Tag * tag, const CaseType ct,
+                          char* color) {
+  const Casing casing = a->ls->cases[ct];
+  if(!casing.check(s_name(tag->sym))) {
+   a->ls->error = true;
+   if(!a->ls->fix) {
+      char main[256];
+      char info[256];
+      snprintf(main, sizeof(main) - 1, "invalid {Y+}%s{0} casing", ct_name[ct]);
+      snprintf(info, sizeof(info) - 1, "should be {W+}%s{0} case", casing.name);
+      gwlog_error(main, info, a->filename, tag->loc, 0);
+    } else {
+      char buf[256];
+      const char *name = s_name(tag->sym);
+      if(strlen(name) > (MAX_COLOR_LENGTH - 2)) {
+        gwlog_error("color too long", NULL, a->filename, tag->loc, 0);
+        return;
+      }
+      if(casing.fix(name, buf, 256)) {
+        COLOR(a, color, buf);
+        return;
+      }
+      gwlog_error("can't convert case", NULL, a->filename, tag->loc, 0);
+    }
+  }
+  COLOR(a, color, s_name(tag->sym));
+}
+
+ANN void type_tag(Gwfmt *a, Tag *tag) {
+  check_tag(a, tag, TypeCase, a->ls->colors[TypeColor]);
+}
+
+ANN int gwfmt_util(Gwfmt *a, const char *fmt, ...) {
+  va_list ap;
   va_start(ap, fmt);
   int n = vsnprintf(NULL, 0, fmt, ap);
   va_end(ap);
@@ -65,6 +111,7 @@ ANN void gwfmt_util(Gwfmt *a, const m_str fmt, ...) {
   text_add(&a->ls->text, tmp);
   mp_free2(a->mp, n + 1, buf);
   va_end(ap);
+  return ret;
 }
 
 ANN static void handle_space(Gwfmt *a, char c) {
@@ -76,7 +123,7 @@ ANN static void handle_space(Gwfmt *a, char c) {
   }
   a->need_space = 0;
 }
-ANN void gwfmt(Gwfmt *a, const m_str fmt, ...) {
+ANN void gwfmt(Gwfmt *a, const char *fmt, ...) {
   a->nl = 0;
   va_list ap;
 
@@ -109,9 +156,9 @@ ANN void gwfmt_nl(Gwfmt *a) {
       gwfmt_util(a, "\n");
       if (!a->ls->pretty && a->ls->show_line) {
         gwfmt_util(a, " {-}% 4u{0}", a->line);//root
-        if (a->ls->mark == a->line)
-          gwfmt_util(a, " {+R}>{0}");
-        else
+//        if (a->ls->mark == a->line)
+//          gwfmt_util(a, " {+R}>{0}");
+//        else
           gwfmt_util(a, "  ");
         gwfmt_util(a, "{N}┃{0} "); //
       }
@@ -122,32 +169,72 @@ ANN void gwfmt_nl(Gwfmt *a) {
   a->nl = nl;
 }
 
+ANN static m_str gwfmt_verbatim(Gwfmt *a, m_str b) {
+  bool escape = false;
+  char last = *b;
+  while(*b) {
+     char c[2] = { *b, 0 };
+     escape = *b == '\\';
+     last = *b;
+     b++;
+     if(!escape && *c == '\n') {
+       a->last = cht(last);
+       return b;
+     }
+     text_add(&a->ls->text, c); 
+     a->column++;
+  }
+  a->last = cht(last);
+  return NULL;
+}
+
+ANN static void gwfmt_op(Gwfmt *a, const Symbol b) {
+  m_str s = s_name(b);
+  handle_space(a, *s);
+  color(a, a->ls->colors[OpColor]);
+  gwfmt_verbatim(a, s_name(b));
+  reset_color(a);
+}
+
+ANN void modifier(Gwfmt *a, const char *mod) {
+  COLOR(a, a->ls->colors[ModColor], mod);
+}
+
+ANN void operator(Gwfmt *a, const char *op) {
+  COLOR(a, a->ls->colors[OpColor], op);
+}
+
+
+ANN void punctuation(Gwfmt *a, const char *punct) {
+  COLOR(a, a->ls->colors[PunctuationColor], punct);
+}
+
 ANN void gwfmt_lbrace(Gwfmt *a) {
-  if (!a->ls->py) COLOR(a, "{-}", "{");
+  if (!a->ls->py) punctuation(a, "{");
 }
 
 ANN void gwfmt_rbrace(Gwfmt *a) {
-  if (!a->ls->py) COLOR(a, "{-}", "}");
+  if (!a->ls->py) punctuation(a, "}");
 }
 
 ANN void gwfmt_sc(Gwfmt *a) {
-  if (!a->ls->py) COLOR(a, "{-}", ";");
+  if (!a->ls->py) punctuation(a, ";");
 }
 
 ANN void gwfmt_comma(Gwfmt *a) {
-  if (!a->ls->py) COLOR(a, "{-}", ",");
+  if (!a->ls->py) punctuation(a, ",");
 }
 
-ANN void gwfmt_lparen(Gwfmt *a) { COLOR(a, "{-}","("); }
+ANN void gwfmt_lparen(Gwfmt *a) { punctuation(a, "("); }
 
-ANN void gwfmt_rparen(Gwfmt *a) { COLOR(a, "{-}", ")");
+ANN void gwfmt_rparen(Gwfmt *a) { punctuation(a, ")");
   a->last = cht_delim;
 
 }
 
-ANN static inline void gwfmt_lbrack(Gwfmt *a) { COLOR(a, "{-}", "["); }
+ANN static inline void gwfmt_lbrack(Gwfmt *a) { punctuation(a, "["); }
 
-ANN static inline void gwfmt_rbrack(Gwfmt *a) { COLOR(a, "{-}", "]"); }
+ANN static inline void gwfmt_rbrack(Gwfmt *a) { punctuation(a, "]"); }
 
 ANN void gwfmt_indent(Gwfmt *a) {
   if(a->ls->minimize && !a->ls->py)
@@ -176,23 +263,23 @@ ANN static void gwfmt_prim_interp(Gwfmt *a, Exp* *b);
 ANN static void gwfmt_flag(Gwfmt *a, ae_flag b) {
   bool state = true;
   if (_FLAG(b, private))
-    COLOR(a, "{-/G}", "private");
+    modifier(a, "private");
   else if (_FLAG(b, protect))
-    COLOR(a, "{-/G}", "protect");
+    modifier(a, "protect");
   else state = false;
   if (state) gwfmt_space(a);
   state = true;
   if (_FLAG(b, static))
-    COLOR(a, "{-G}", "static");
+    modifier(a, "static");
   else if (_FLAG(b, global))
-    COLOR(a, "{-G}", "global");
+    modifier(a, "global");
   else state = false;
   if (state) gwfmt_space(a);
   state = true;
   if (_FLAG(b, abstract))
-    COLOR(a, "{-G}", "abstract");
+    modifier(a, "abstract");
   else if (_FLAG(b, final))
-    COLOR(a, "{-G}", "final");
+    modifier(a, "final");
   else state = false;
   if (state) gwfmt_space(a);
 }
@@ -202,7 +289,7 @@ ANN static void gwfmt_symbol(Gwfmt *a, Symbol b) {
   const m_str s = s_name(b);
   if (!strcmp(s, "true") || !strcmp(s, "false") || !strcmp(s, "maybe") ||
       !strcmp(s, "adc") || !strcmp(s, "dac") || !strcmp(s, "now"))
-    COLOR(a, "{B}", s_name(b));
+    COLOR(a, a->ls->colors[SpecialColor], s_name(b));
   else
     gwfmt(a, s);
 }
@@ -235,7 +322,7 @@ ANN static void gwfmt_id_list(Gwfmt *a, ID_List b) {
 }
 
 ANN void gwfmt_traits(Gwfmt *a, ID_List b) {
-  gwfmt(a, ":");
+  punctuation(a, ":");
   gwfmt_space(a);
   gwfmt_id_list(a, b);
   gwfmt_space(a);
@@ -245,12 +332,12 @@ ANN static void gwfmt_specialized_list(Gwfmt *a, Specialized_List b) {
   for(uint32_t i = 0; i < b->len; i++) {
     Specialized *spec = mp_vector_at(b, Specialized, i);
     if(spec->td) {
-      COLOR(a, "{+G}", "const");
+      modifier(a, "const");
       gwfmt_space(a);
       gwfmt_type_decl(a, spec->td);
       gwfmt_space(a);
     }
-    COLOR(a, "{-C}", s_name(spec->tag.sym));
+    COLOR(a, a->ls->colors[TypeColor], s_name(spec->tag.sym));
     if (spec->traits) {
       gwfmt_space(a);
       gwfmt_traits(a, spec->traits);
@@ -275,7 +362,7 @@ ANN static void _gwfmt_tmplarg_list(Gwfmt *a, TmplArg_List b) {
   }
 }
 
-ANN static inline void gwfmt_init_tmpl(Gwfmt *a) { COLOR(a, "{-}",":["); }
+ANN static inline void gwfmt_init_tmpl(Gwfmt *a) { punctuation(a, ":["); }
 
 ANN static void gwfmt_tmplarg_list(Gwfmt *a, TmplArg_List b) {
   gwfmt_init_tmpl(a);
@@ -300,7 +387,7 @@ ANN static void gwfmt_range(Gwfmt *a, Range *b) {
   gwfmt_lbrack(a);
   if (b->start) gwfmt_exp(a, b->start);
   gwfmt_space(a);
-  COLOR(a, "{-}", ":");
+  punctuation(a, ":");
   gwfmt_space(a);
   if (b->end) gwfmt_exp(a, b->end);
   gwfmt_rbrack(a);
@@ -317,7 +404,7 @@ ANN static void gwfmt_prim_dict(Gwfmt *a, Exp* *b) {
     next->next = NULL;
     gwfmt_exp(a, e);
     gwfmt_space(a);
-    gwfmt(a, ":");
+    punctuation(a, ":");
     gwfmt_space(a);
     gwfmt_exp(a, next);
     e->next = next;
@@ -330,17 +417,18 @@ ANN static void gwfmt_prim_dict(Gwfmt *a, Exp* *b) {
   gwfmt_space(a);
   gwfmt_rbrace(a);
 }
+
 ANN static void gwfmt_effect(Gwfmt *a, Symbol b) {
-  COLOR(a, "{-/C}", s_name(b));
+  COLOR(a, a->ls->colors[FlowColor], s_name(b));
 }
 
 ANN static void gwfmt_perform(Gwfmt *a) {
-  COLOR(a, "{/M}", "perform");
+  flow(a, "perform");
   gwfmt_space(a);
 }
 
 ANN static void gwfmt_prim_perform(Gwfmt *a, Symbol *b) {
-  COLOR(a, "{/M}", "perform");
+  flow(a, "perform");
   gwfmt_space(a);
   gwfmt_effect(a, *b);
 }
@@ -356,11 +444,11 @@ ANN static void gwfmt_effects(Gwfmt *a, Vector b) {
 
 ANN void gwfmt_type_decl(Gwfmt *a, const Type_Decl *b) {
   if (GET_FLAG(b, const)) {
-    COLOR(a, "{+G}", "const");
+    modifier(a, "const");
     gwfmt_space(a);
   }
   if (GET_FLAG(b, late)) {
-    COLOR(a, "{+/G}", "late");
+    modifier(a, "late");
     gwfmt_space(a);
   }
   gwfmt_flag(a, b);
@@ -378,9 +466,8 @@ ANN void gwfmt_type_decl(Gwfmt *a, const Type_Decl *b) {
     gwfmt_rparen(a);
     if (fptr->base->effects.ptr) gwfmt_effects(a, &fptr->base->effects);
     gwfmt_rparen(a);
-    //    COLOR(a, "{C}", s_name(b->xid));
   } else if (b->tag.sym)
-    COLOR(a, "{C}", s_name(b->tag.sym));
+    COLOR(a, a->ls->colors[TypeColor], s_name(b->tag.sym));
   if (b->types) gwfmt_tmplarg_list(a, b->types);
   for (m_uint i = 0; i < b->option; ++i) gwfmt(a, "?");
   if (b->array) gwfmt_array_sub2(a, b->array);
@@ -482,73 +569,51 @@ ANN static void gwfmt_octal(Gwfmt *a, m_int num) {
 }
 
 ANN static void gwfmt_prim_num(Gwfmt *a, struct gwint *b) {
-  color(a, "{M}");
+  color(a, a->ls->colors[NumberColor]);
   switch(b->int_type) {
     case gwint_decimal: gwfmt_decimal(a, b->num); break;
     case gwint_binary:  gwfmt_binary(a, b->num); break;
     case gwint_hexa:    gwfmt_hexa(a, b->num); break;
     case gwint_octal:   gwfmt_octal(a, b->num); break;
   }
-  color(a, "{0}");
+  reset_color(a);
 }
 
 ANN static void gwfmt_prim_float(Gwfmt *a, m_float *b) {
-  if (*b == floor(*b)) {
-    color(a, "{M}");
+  color(a, a->ls->colors[NumberColor]);
+  if (*b == floor(*b))
     gwfmt(a, "%li.", (m_int)*b);
-    color(a, "{0}");
-  } else {
-    color(a, "{M}");
+  else
     gwfmt(a, "%g", *b);
-    color(a, "{0}");
-  }
-}
-
-ANN static m_str gwfmt_verbatim(Gwfmt *a, m_str b) {
-  const size_t len = strlen(b);
-  bool escape = false;
-  char last = *b;
-  while(*b) {
-     char c[2] = { *b, 0 };
-     escape = *b == '\\';
-     last = *b;
-     b++;
-     if(!escape && *c == '\n') {
-       a->last = cht(last);
-       return b;
-     }
-     text_add(&a->ls->text, c); 
-     a->column++;
-  }
-  a->last = cht(last);
-  return NULL;
+  reset_color(a);
 }
 
 ANN static void gwfmt_string(Gwfmt *a, m_str str) {
   m_str s = str;
   while((s = gwfmt_verbatim(a, s))) {
-      color(a, "{0}");
+      reset_color(a);
       gwfmt_nl(a);
-      color(a, "{/Y}");
+      color(a, a->ls->colors[StringColor]);
   }
 }
 
 ANN static void gwfmt_delim(Gwfmt *a, uint16_t delim) {
+  reset_color(a);
+  color(a, a->ls->colors[StringColor]);
   if(delim) {
-    color(a, "{Y-}");
     gwfmt(a, "%.*c",  delim, '#');
   }
-  COLOR(a, "{0}{Y-}", "\"");
-  color(a, "{/Y}");
+  gwfmt(a, "\"");
 }
 
 ANN static void gwfmt_delim2(Gwfmt *a, uint16_t delim) {
-  COLOR(a, "{0}{Y-}", "\"");
+  reset_color(a);
+  color(a, a->ls->colors[StringColor]);
+  gwfmt(a, "\"");
   if(delim) {
-    color(a, "{Y-}");
     gwfmt(a, "%.*c",  delim, '#');
   }
-  color(a, "{0}");
+  reset_color(a);
 }
 
 ANN static void gwfmt_prim_str(Gwfmt *a, struct AstString *b) {
@@ -564,17 +629,17 @@ ANN static void gwfmt_prim_array(Gwfmt *a, Array_Sub *b) {
 ANN static void gwfmt_prim_range(Gwfmt *a, Range **b) { gwfmt_range(a, *b); }
 
 ANN static void gwfmt_prim_hack(Gwfmt *a, Exp* *b) {
-  COLOR(a, "{-R}", "<<<");
+  punctuation(a, "<<<");
   gwfmt_space(a);
   gwfmt_exp(a, *b);
   gwfmt_space(a);
-  COLOR(a, "{-R}", ">>>");
+  punctuation(a, ">>>");
 }
 
 ANN static void gwfmt_prim_char(Gwfmt *a, m_str *b) {
-  color(a, "{M}");
+  color(a, a->ls->colors[StringColor]);
   gwfmt(a, "'%s'", *b);
-  color(a, "{0}");
+  reset_color(a);
 }
 
 ANN static void gwfmt_prim_nil(Gwfmt *a, void *b NUSED) {
@@ -593,14 +658,19 @@ ANN static void gwfmt_prim(Gwfmt *a, Exp_Primary *b) {
   gwfmt_prim_func[b->prim_type](a, &b->d);
 }
 
+ANN static void variable_tag(Gwfmt *a, const Tag *b) {
+    check_tag(a, b, VariableCase, a->ls->colors[VariableColor]);
+}
+
 ANN static void gwfmt_var_decl(Gwfmt *a, const Var_Decl *b) {
-  if (b->tag.sym) COLOR(a, "{W+}", s_name(b->tag.sym));
+  if (b->tag.sym) 
+    variable_tag(a, &b->tag);
 }
 
 ANN static void gwfmt_exp_decl(Gwfmt *a, Exp_Decl *b) {
   if (b->var.td) {
     if (!(GET_FLAG(b->var.td, const) || GET_FLAG(b->var.td, late))) {
-      COLOR(a, "{+G}", "var");
+      modifier(a, "var");
       gwfmt_space(a);
     }
     gwfmt_type_decl(a, b->var.td);
@@ -611,17 +681,9 @@ ANN static void gwfmt_exp_decl(Gwfmt *a, Exp_Decl *b) {
 }
 
 ANN static void gwfmt_exp_td(Gwfmt *a, Type_Decl *b) {
-  COLOR(a, "{-G}", "$");
+  operator(a, "$");
   //  gwfmt_space(a);
   gwfmt_type_decl(a, b);
-}
-
-ANN static void gwfmt_op(Gwfmt *a, const Symbol b) {
-  m_str s = s_name(b);
-  handle_space(a, *s);
-  color(a, "{-G}");
-  gwfmt_verbatim(a, s_name(b));
-  color(a, "{0}");
 }
 
 ANN static void gwfmt_exp_binary(Gwfmt *a, Exp_Binary *b) {
@@ -644,15 +706,15 @@ ANN static int isop(const Symbol s) {
 }
 
 ANN static void gwfmt_captures(Gwfmt *a, Capture_List b) {
-  gwfmt(a, ":");
+  punctuation(a, ":");
   gwfmt_space(a);
   for (uint32_t i = 0; i < b->len; i++) {
     Capture *cap = mp_vector_at(b, Capture, i);
     if(cap->is_ref) gwfmt(a, "&");
-    gwfmt_symbol(a, cap->var.tag.sym);
+    gwfmt_var_decl(a, &cap->var);
     gwfmt_space(a);
   }
-  gwfmt(a, ":");
+  punctuation(a, ":");
 }
 
 ANN static void gwfmt_exp_unary(Gwfmt *a, Exp_Unary *b) {
@@ -687,7 +749,7 @@ ANN static void gwfmt_exp_cast(Gwfmt *a, Exp_Cast *b) {
   else
     paren_exp(a, b->exp);
   gwfmt_space(a);
-  COLOR(a, "{-G}", "$");
+  operator(a, "$");
   gwfmt_space(a);
   gwfmt_type_decl(a, b->td);
 }
@@ -733,7 +795,7 @@ ANN static void gwfmt_exp_if(Gwfmt *a, Exp_If *b) {
     gwfmt_exp(a, b->if_exp);
     gwfmt_space(a);
   }
-  gwfmt(a, ":");
+  punctuation(a, ":");
   gwfmt_exp(a, b->else_exp);
 }
 
@@ -746,7 +808,7 @@ ANN static void gwfmt_exp_dot(Gwfmt *a, Exp_Dot *b) {
 ANN static void gwfmt_lambda_list(Gwfmt *a, Arg_List b) {
   for(uint32_t i = 0; i < b->len; i++) {
     Arg *arg = mp_vector_at(b, Arg, i);
-    gwfmt_symbol(a, arg->var.vd.tag.sym);
+    gwfmt_variable(a, &arg->var);
     gwfmt_space(a);
   }
 }
@@ -783,22 +845,23 @@ ANN static void gwfmt_prim_interp(Gwfmt *a, Exp* *b) {
   Exp* e = *b;
   const uint16_t delim = e->d.prim.d.string.delim;
   gwfmt_delim(a, delim);
-  color(a, "{/Y}");
+  color(a, a->ls->colors[PunctuationColor]);
   while (e) {
     if (e->exp_type == ae_exp_primary && e->d.prim.prim_type == ae_prim_str) {
       gwfmt_string(a,  e->d.prim.d.string.data);
     } else {
-      COLOR(a, "{Y/-}", "${");
+      reset_color(a);
+      COLOR(a, a->ls->colors[PunctuationColor], "${");
       gwfmt_space(a);
       gwfmt_exp_func[e->exp_type](a, &e->d);
       gwfmt_space(a);
-      COLOR(a, "{-/Y}", "}");
-      color(a, "{Y/}");
+      COLOR(a, a->ls->colors[PunctuationColor], "}");
+      color(a, a->ls->colors[StringColor]);
     }
     e = e->next;
   }
   gwfmt_delim2(a, delim);
-  color(a, "{/Y}");
+  color(a, a->ls->colors[StringColor]);
 }
 
 ANN static void gwfmt_array_sub2(Gwfmt *a, Array_Sub b) {
@@ -834,16 +897,16 @@ ANN static void gwfmt_stmt_exp(Gwfmt *a, Stmt_Exp b) {
 }
 
 ANN static void gwfmt_stmt_retry(Gwfmt *a, Stmt_Exp b NUSED) {
-  COLOR(a, "{+M}", "retry;");
+  flow(a, "retry;");
 }
 
 ANN static void gwfmt_handler_list(Gwfmt *a, Handler_List b) {
   for(uint32_t i = 0; i < b->len; i++) {
     Handler *handler = mp_vector_at(b, Handler, i);
-    COLOR(a, "{+M}", "handle");
+    flow(a, "handle");
     gwfmt_space(a);
     if (handler->tag.sym) {
-      gwfmt_effect(a, handler->tag.sym);
+      type_tag(a, &handler->tag);
       gwfmt_space(a);
     }
     const uint indent = a->skip_indent++;
@@ -853,31 +916,28 @@ ANN static void gwfmt_handler_list(Gwfmt *a, Handler_List b) {
 }
 
 ANN static void gwfmt_stmt_try(Gwfmt *a, Stmt_Try b) {
-  COLOR(a, "{+M}", "try");
+  flow(a, "try");
   gwfmt_space(a);
   const uint indent = a->skip_indent++;
-//  const uint indent = a->indent++;
   gwfmt_stmt(a, b->stmt);
   gwfmt_space(a);
-//  a->indent--;
-// = indent;
   a->skip_indent = indent;
   gwfmt_handler_list(a, b->handler);
 }
 
 ANN static void gwfmt_stmt_spread(Gwfmt *a, Spread_Def b) {
-  gwfmt(a, "...");
+  punctuation(a, "...");
   gwfmt_space(a);
-  gwfmt_symbol(a, b->tag.sym);
+  variable_tag(a, &b->tag);
   gwfmt_space(a);
-  gwfmt(a, ":");
+  punctuation(a, ":");
   gwfmt_space(a);
   gwfmt_id_list(a, b->list);
   gwfmt_space(a);
   gwfmt_lbrace(a);
   gwfmt_nl(a);
   a->indent++;
-  struct PPArg_ ppa = {};
+  PPArg ppa = {};
   pparg_ini(a->mp, &ppa);
   FILE *file = fmemopen(b->data, strlen(b->data), "r");
   struct AstGetter_ arg = {"", file, a->st, .ppa = &ppa};
@@ -887,23 +947,23 @@ ANN static void gwfmt_stmt_spread(Gwfmt *a, Spread_Def b) {
   a->indent--;
   gwfmt_indent(a);
   gwfmt_rbrace(a);
-  gwfmt(a, "...");
+  punctuation(a, "...");
   gwfmt_nl(a);
 }
 
 DECL_STMT_FUNC(gwfmt, void, Gwfmt *)
 ANN static void gwfmt_stmt_while(Gwfmt *a, Stmt_Flow b) {
   if (!b->is_do) {
-    COLOR(a, "{+M}", "while");
+    flow(a, "while");
     paren_exp(a, b->cond);
   } else
-    COLOR(a, "{+M}", "do");
+    flow(a, "do");
   if (b->body->stmt_type != ae_stmt_exp || b->body->d.stmt_exp.val)
     gwfmt_space(a);
   gwfmt_stmt_func[b->body->stmt_type](a, &b->body->d);
   if (b->is_do) {
     gwfmt_space(a);
-    COLOR(a, "{+M}", "while");
+    flow(a, "while");
     paren_exp(a, b->cond);
     gwfmt_sc(a);
   }
@@ -911,22 +971,22 @@ ANN static void gwfmt_stmt_while(Gwfmt *a, Stmt_Flow b) {
 
 ANN static void gwfmt_stmt_until(Gwfmt *a, Stmt_Flow b) {
   if (!b->is_do) {
-    COLOR(a, "{+M}", "until");
+    flow(a, "until");
     paren_exp(a, b->cond);
   } else
-    COLOR(a, "{+M}", "do");
+    flow(a, "do");
   gwfmt_space(a);
   gwfmt_stmt_func[b->body->stmt_type](a, &b->body->d);
   if (b->is_do) {
     gwfmt_space(a);
-    COLOR(a, "{+M}", "until");
+    flow(a, "until");
     paren_exp(a, b->cond);
     gwfmt_sc(a);
   }
 }
 
 ANN static void gwfmt_stmt_for(Gwfmt *a, Stmt_For b) {
-  COLOR(a, "{+M}", "for");
+  flow(a, "for");
   gwfmt_lparen(a);
   gwfmt_stmt_exp(a, &b->c1->d.stmt_exp);
   gwfmt_space(a);
@@ -952,16 +1012,16 @@ ANN static void gwfmt_stmt_for(Gwfmt *a, Stmt_For b) {
 }
 
 ANN static void gwfmt_stmt_each(Gwfmt *a, Stmt_Each b) {
-  COLOR(a, "{+M}", "foreach");
+  flow(a, "foreach");
   gwfmt_lparen(a);
   if(b->idx.tag.sym) {
-    gwfmt_symbol(a, b->idx.tag.sym);
+    gwfmt_var_decl(a, &b->idx);
     gwfmt_comma(a);
     gwfmt_space(a);
   }
-  gwfmt_symbol(a, b->var.tag.sym);
+  gwfmt_var_decl(a, &b->var);
   gwfmt_space(a);
-  COLOR(a, "{-}", ":");
+  punctuation(a, ":");
   gwfmt_space(a);
   gwfmt_exp(a, b->exp);
   gwfmt_rparen(a);
@@ -970,10 +1030,10 @@ ANN static void gwfmt_stmt_each(Gwfmt *a, Stmt_Each b) {
 }
 
 ANN static void gwfmt_stmt_loop(Gwfmt *a, Stmt_Loop b) {
-  COLOR(a, "{+M}", "repeat");
+  flow(a, "repeat");
   gwfmt_lparen(a);
   if (b->idx.tag.sym) {
-    gwfmt_symbol(a, b->idx.tag.sym);
+    gwfmt_var_decl(a, &b->idx);
     gwfmt_comma(a);
     gwfmt_space(a);
   }
@@ -1000,12 +1060,12 @@ ANN static void gwfmt_code(Gwfmt *a, Stmt* b) {
 }
 
 ANN static void gwfmt_stmt_if(Gwfmt *a, Stmt_If b) {
-  COLOR(a, "{+M}", "if");
+  flow(a, "if");
   paren_exp(a, b->cond);
   gwfmt_code(a, b->if_body);
   if (b->else_body) {
     gwfmt_space(a);
-    COLOR(a, "{+M}", "else");
+    flow(a, "else");
     gwfmt_code(a, b->else_body);
   }
 }
@@ -1020,7 +1080,7 @@ ANN static void gwfmt_stmt_code(Gwfmt *a, Stmt_Code b) {
 }
 
 ANN static void gwfmt_stmt_break(Gwfmt *a, Stmt_Index b) {
-  COLOR(a, "{+M}", "break");
+  flow(a, "break");
   if (b->idx) {
     gwfmt_space(a);
     struct gwint gwint = GWINT(b->idx, gwint_decimal);
@@ -1030,7 +1090,7 @@ ANN static void gwfmt_stmt_break(Gwfmt *a, Stmt_Index b) {
 }
 
 ANN static void gwfmt_stmt_continue(Gwfmt *a, Stmt_Index b) {
-  COLOR(a, "{+M}", "continue");
+  flow(a, "continue");
   if (b->idx) {
     gwfmt_space(a);
     struct gwint gwint = GWINT(b->idx, gwint_decimal);
@@ -1040,7 +1100,7 @@ ANN static void gwfmt_stmt_continue(Gwfmt *a, Stmt_Index b) {
 }
 
 ANN static void gwfmt_stmt_return(Gwfmt *a, Stmt_Exp b) {
-  COLOR(a, "{+M}", "return");
+  flow(a, "return");
   if (b->val) {
     gwfmt_space(a);
     gwfmt_exp(a, b->val);
@@ -1057,7 +1117,7 @@ ANN static void gwfmt_case_list(Gwfmt *a, Stmt_List b) {
 }
 
 ANN static void gwfmt_stmt_match(Gwfmt *a, Stmt_Match b) {
-  COLOR(a, "{+M}", "match");
+  flow(a, "match");
   gwfmt_space(a);
   gwfmt_exp(a, b->cond);
   gwfmt_space(a);
@@ -1070,7 +1130,7 @@ ANN static void gwfmt_stmt_match(Gwfmt *a, Stmt_Match b) {
   gwfmt_rbrace(a);
   if (b->where) {
     gwfmt_space(a);
-    COLOR(a, "{+M}", "where");
+    flow(a, "where");
     gwfmt_space(a);
     gwfmt_stmt(a, b->where);
   }
@@ -1078,17 +1138,17 @@ ANN static void gwfmt_stmt_match(Gwfmt *a, Stmt_Match b) {
 
 ANN static void gwfmt_stmt_case(Gwfmt *a, Stmt_Match b) {
   gwfmt_indent(a);
-  COLOR(a, "{+M}", "case");
+  flow(a, "case");
   gwfmt_space(a);
   gwfmt_exp(a, b->cond);
   if (b->when) {
     gwfmt_space(a);
-    COLOR(a, "{+M}", "when");
+    flow(a, "when");
     gwfmt_space(a);
     gwfmt_exp(a, b->when);
   }
   //  gwfmt_space(a);
-  COLOR(a, "{-}", ":");
+  punctuation(a, ":");
   if (b->list->len > 1)
     INDENT(a, gwfmt_stmt_list(a, b->list))
   else {
@@ -1101,14 +1161,6 @@ ANN static void gwfmt_stmt_case(Gwfmt *a, Stmt_Match b) {
 static const char *pp[] = {"!",     "include", "define", "pragma", "undef",
                            "ifdef", "ifndef",  "else",   "endif",  "import", "locale"};
 
-static const char *pp_color[] = {"{-}", "{Y}", "{G}", "{R}", "{W}",
-                                 "{B}", "{B}", "{B}", "{B}", "{+C}", "{+C}"};
-
-ANN static inline m_str strip(m_str str) {
-  while(isspace(*str))str++;
-  return str;
-}
-
 ANN static void force_nl(Gwfmt *a) {
   if(a->ls->minimize) {
     text_add(&a->ls->text, "\n");
@@ -1118,37 +1170,43 @@ ANN static void force_nl(Gwfmt *a) {
 
 ANN static void gwfmt_stmt_pp(Gwfmt *a, Stmt_PP b) {
   if (b->pp_type == ae_pp_nl) return;
-  if (a->last != cht_nl && b->pp_type != ae_pp_include) gwfmt(a, "\n");
-  if (b->pp_type == ae_pp_locale) {
-    COLOR(a, "{M/}", "#locale ");
-    COLOR(a, "{+C}", s_name(b->xid));
-    gwfmt_space(a);
-    if(b->exp) gwfmt_exp(a, b->exp);
-    return;
-  } else if (b->pp_type == ae_pp_include) {
-    if(a->ls->ppa->fmt) {
-      COLOR(a, "{M/}", "#include");
-      gwfmt_space(a);
-      color(a, "{Y}");
-      gwfmt(a, "<%s>", b->data);
-      color(a, "{0}");
-    } else return;
-  } else if (b->pp_type != ae_pp_comment) {
-    color(a, "{M/}");
-    gwfmt(a, "#%s ", pp[b->pp_type]);
-    COLOR(a, (m_str)pp_color[b->pp_type], b->data ?: "");
-  } else if(!a->ls->minimize) {
+  if (a->last != cht_nl && b->pp_type != ae_pp_include) gwfmt_nl(a);
+  if (b->pp_type == ae_pp_comment) {
+    if(a->ls->minimize)
+      return;
     gwfmt_indent(a);
-    color(a, "{M/}");
+    color(a, a->ls->colors[PunctuationColor]);
     gwfmt(a, "#! ");
-    COLOR(a, "{-}", b->data ?: "");
+    if(b->data)
+      gwfmt(a, b->data);
+    reset_color(a);
+    return;
+  } else {
+    color(a, a->ls->colors[PPColor]);
+//    color(a, "{-M}");
+    gwfmt(a, "#%s", pp[b->pp_type]);
+    reset_color(a);
+    gwfmt_space(a);
+    if (b->pp_type == ae_pp_locale) {
+      COLOR(a, a->ls->colors[FunctionColor], s_name(b->xid));
+      gwfmt(a, s_name(b->xid));
+      gwfmt_space(a);
+      if(b->exp) gwfmt_exp(a, b->exp);
+    } else if (b->pp_type == ae_pp_include) {
+      if(a->ls->ppa->fmt) {
+        color(a,  a->ls->colors[StringColor]);
+        gwfmt(a, "<%s>", b->data);
+      }
+    } else if(b->data)
+       gwfmt(a, b->data);
   }
+  reset_color(a);
   force_nl(a);
   a->last = cht_nl;
 }
 
 ANN static void gwfmt_stmt_defer(Gwfmt *a, Stmt_Defer b) {
-  COLOR(a, "{+M}", "defer");
+  flow(a, "defer");
   gwfmt_space(a);
   a->skip_indent++;
   gwfmt_stmt(a, b->stmt);
@@ -1175,7 +1233,7 @@ ANN /*static */void gwfmt_arg_list(Gwfmt *a, Arg_List b, const bool locale) {
     gwfmt_variable(a, &arg->var);
     if (arg->exp) {
       gwfmt_space(a);
-      gwfmt(a, ":");
+      punctuation(a, ":");
       gwfmt_space(a);
       gwfmt_exp(a, arg->exp);
     }
@@ -1216,9 +1274,11 @@ ANN static void gwfmt_func_base(Gwfmt *a, Func_Base *b) {
     gwfmt_space(a);
   }
   if (!fbflag(b, fbflag_unary)) {
-    if (!fbflag(b, fbflag_op))
-      COLOR(a, "{M}", s_name(b->tag.sym));
-    else gwfmt_op(a, b->tag.sym);
+    if (!fbflag(b, fbflag_op)) {
+      check_tag(a, &b->tag, FunctionCase, 
+a->ls->colors[FunctionColor]
+                );
+    } else gwfmt_op(a, b->tag.sym);
     if (b->tmpl) gwfmt_tmpl(a, b->tmpl);
   }
   if (fbflag(b, fbflag_op))
@@ -1232,16 +1292,16 @@ ANN static void gwfmt_func_base(Gwfmt *a, Func_Base *b) {
 ANN void gwfmt_func_def(Gwfmt *a, Func_Def b) {
   /*
   if(fbflag(b->base, fbflag_compt)) {
-    COLOR(a, "{+G}", "const");
+    modifier("const");
     gwfmt_space(a);
   }
   */
   if(fbflag(b->base, fbflag_locale))
-    COLOR(a, "{+C}", "locale");
+    keyword(a, "locale");
   else if(!fbflag(b->base, fbflag_op) && strcmp(s_name(b->base->tag.sym), "new"))
-    COLOR(a, "{+C}", "fun");
+    keyword(a, "fun");
   else
-    COLOR(a, "{+C}", "operator");
+    keyword(a, "operator");
   gwfmt_space(a);
   gwfmt_func_base(a, b->base);
   if (a->ls->builtin) {
@@ -1249,7 +1309,7 @@ ANN void gwfmt_func_def(Gwfmt *a, Func_Def b) {
     gwfmt_nl(a);
     return;
   }
-  if (!GET_FLAG(b->base, abstract) && b->d.code) {
+  if (!GET_FLAG(b->base, abstract) && !b->builtin && b->d.code) {
     gwfmt_space(a);
     gwfmt_lbrace(a);
     gwfmt_nl(a);
@@ -1263,14 +1323,14 @@ ANN void gwfmt_func_def(Gwfmt *a, Func_Def b) {
 }
 
 ANN void gwfmt_class_def(Gwfmt *a, Class_Def b) {
-  COLOR(a, "{+C}", !cflag(b, cflag_struct) ? "class" : "struct");
+  keyword(a, !cflag(b, cflag_struct) ? "class" : "struct");
   gwfmt_space(a);
   gwfmt_flag(a, b);
-  COLOR(a, "{+W}", s_name(b->base.tag.sym));
+  type_tag(a, &b->base.tag);
   if (b->base.tmpl) gwfmt_tmpl(a, b->base.tmpl);
   gwfmt_space(a);
   if (b->base.ext) {
-    COLOR(a, "{+/C}", "extends");
+    keyword(a, "extends");
     gwfmt_space(a);
     gwfmt_type_decl(a, b->base.ext);
     gwfmt_space(a);
@@ -1299,17 +1359,17 @@ ANN static void gwfmt_enum_list(Gwfmt *a, EnumValue_List b) {
       gwfmt_op(a, insert_symbol(a->st, ":=>"));
       gwfmt_space(a);
     }
-    gwfmt_symbol(a, ev->tag.sym);
+    variable_tag(a, &ev->tag);
     if (!a->ls->minimize && (i == b->len - 1)) gwfmt_comma(a);
     gwfmt_nl(a);
   }
 }
 
 ANN void gwfmt_enum_def(Gwfmt *a, Enum_Def b) {
-  COLOR(a, "{+C}", "enum");
+  keyword(a, "enum");
   gwfmt_space(a);
   gwfmt_flag(a, b);
-  COLOR(a, "{/}", s_name(b->tag.sym));
+  type_tag(a, &b->tag);
   gwfmt_space(a);
   gwfmt_lbrace(a);
   a->indent++;
@@ -1320,10 +1380,10 @@ ANN void gwfmt_enum_def(Gwfmt *a, Enum_Def b) {
 }
 
 ANN void gwfmt_union_def(Gwfmt *a, Union_Def b) {
-  COLOR(a, "{+C}", "union");
+  keyword(a, "union");
   gwfmt_space(a);
   gwfmt_flag(a, b);
-  COLOR(a, "{/}", s_name(b->tag.sym));
+  type_tag(a, &b->tag);
   gwfmt_space(a);
   if (b->tmpl) gwfmt_tmpl(a, b->tmpl);
   gwfmt_space(a);
@@ -1336,7 +1396,7 @@ ANN void gwfmt_union_def(Gwfmt *a, Union_Def b) {
 }
 
 ANN void gwfmt_fptr_def(Gwfmt *a, Fptr_Def b) {
-  COLOR(a, "{+C}", "funptr");
+  keyword(a, "funptr");
   gwfmt_space(a);
   gwfmt_func_base(a, b->base);
   gwfmt_sc(a);
@@ -1344,19 +1404,19 @@ ANN void gwfmt_fptr_def(Gwfmt *a, Fptr_Def b) {
 }
 
 ANN void gwfmt_type_def(Gwfmt *a, Type_Def b) {
-  COLOR(a, "{+C}", !b->distinct ? "typedef" : "distinct");
+  keyword(a, !b->distinct ? "typedef" : "distinct");
   gwfmt_space(a);
   if (b->ext) {
     gwfmt_type_decl(a, b->ext);
     gwfmt_space(a);
   }
-  COLOR(a, "{/}", s_name(b->tag.sym));
+  type_tag(a, &b->tag);
   if (b->tmpl) gwfmt_tmpl(a, b->tmpl);
   if (b->when) {
     gwfmt_nl(a);
     a->indent += 2;
     gwfmt_indent(a);
-    COLOR(a, "{M}", "when");
+    flow(a, "when");
     a->indent -= 2;
     gwfmt_space(a);
     gwfmt_exp(a, b->when);
@@ -1366,11 +1426,11 @@ ANN void gwfmt_type_def(Gwfmt *a, Type_Def b) {
 }
 
 ANN static void gwfmt_extend_def(Gwfmt *a, Extend_Def b) {
-  COLOR(a, "{+C}", "extends");
+  keyword(a, "extends");
   gwfmt_space(a);
   gwfmt_type_decl(a, b->td);
   gwfmt_space(a);
-  gwfmt(a, ":");
+  punctuation(a, ":");
   gwfmt_space(a);
   gwfmt_id_list(a, b->traits);
   gwfmt_sc(a);
@@ -1378,9 +1438,9 @@ ANN static void gwfmt_extend_def(Gwfmt *a, Extend_Def b) {
 }
 
 ANN static void gwfmt_trait_def(Gwfmt *a, Trait_Def b) {
-  COLOR(a, "{+C}", "trait");
+  keyword(a, "trait");
   gwfmt_space(a);
-  gwfmt_symbol(a, b->tag.sym);
+  type_tag(a, &b->tag);
   gwfmt_space(a);
   if (b->body) {
     gwfmt_lbrace(a);
@@ -1393,10 +1453,10 @@ ANN static void gwfmt_trait_def(Gwfmt *a, Trait_Def b) {
 }
 
 ANN void gwfmt_prim_def(Gwfmt *a, Prim_Def b) {
-  COLOR(a, "{+C}", "primitive");
+  keyword(a, "primitive");
   gwfmt_space(a);
   gwfmt_flag(a, b);
-  COLOR(a, "{+W}", s_name(b->tag.sym));
+  type_tag(a, &b->tag);
   gwfmt_space(a);
   struct gwint gwint = GWINT(b->size, gwint_decimal);
   gwfmt_prim_num(a, &gwint);
@@ -1417,4 +1477,30 @@ ANN void gwfmt_ast(Gwfmt *a, Ast b) {
     gwfmt_section(a, section);
     if(i < sz -1) gwfmt_nl(a);
   }
+}
+
+void set_color(struct GwfmtState *ls, const FmtColor b,
+               const char *color) {
+  const size_t len = strlen(color);
+  ls->colors[b][0] = '{';
+  strncpy(ls->colors[b] + 1, color, 61);
+  ls->colors[b][len + 1] = '}';
+}
+
+void gwfmt_state_init(GwfmtState *ls) {
+  ls->cases[TypeCase] = *get_casing(PASCALCASE);
+  ls->cases[VariableCase] = *get_casing(CAMELCASE);
+  ls->cases[FunctionCase] = *get_casing(SNAKECASE);
+  set_color(ls, StringColor, "/Y");
+  set_color(ls, KeywordColor, "+G");
+  set_color(ls, FlowColor, "+/G");
+  set_color(ls, FunctionColor, "+M");
+  set_color(ls, TypeColor, "+Y");
+  set_color(ls, VariableColor, "W");
+  set_color(ls, NumberColor, "M");
+  set_color(ls, OpColor, "-W");
+  set_color(ls, ModColor, "-G");
+  set_color(ls, PPColor, "-B");
+  set_color(ls, SpecialColor, "B");
+  set_color(ls, PunctuationColor, "-");
 }

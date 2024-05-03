@@ -22,9 +22,10 @@ static int unsigned start;
 ID  [A-Za-z_][A-Za-z0-9_]*
 INT [0-9]+
 OP [\?:\$@\+\-\*/%~\<\>\^|&\!=]*
+%option noinput
 %option noyywrap
-%option outfile="unpy.c"
-%option header-file="unpy.h"
+%option outfile="src/unpy.c"
+%option header-file="src/unpy.h"
 %%
 
 

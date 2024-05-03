@@ -1,10 +1,56 @@
-enum char_type { cht_id, cht_colon, cht_lbrack, cht_nl, cht_op, cht_delim, cht_sp };
+#pragma once
 
-struct GwfmtState {
+#include "gwion_util.h"
+#include "gwion_ast.h"
+#include "casing.h"
+
+enum gwfmt_char_type { cht_id, cht_colon, cht_lbrack, cht_nl, cht_op, cht_delim, cht_sp };
+
+typedef enum CaseType {
+  TypeCase,
+  VariableCase,
+  FunctionCase,
+  LastCase
+} CaseType;
+
+#ifdef LINT_IMPL
+static const char* ct_name[LastCase] = {
+  "Type",
+  "Variable",
+  "Function",
+};
+#endif
+
+typedef enum FmtColor {
+  StringColor,
+  KeywordColor,
+  FlowColor,
+  FunctionColor,
+  TypeColor,
+  VariableColor,
+  NumberColor,
+  OpColor,
+  ModColor,
+  PunctuationColor,
+  PPColor,
+  SpecialColor,
+  LastColor,
+} FmtColor; 
+
+#define MAX_COLOR_LENGTH 8
+
+typedef struct GwFmtMark {
+  uint16_t line;
+  char sign[16];
+} GwFmtMark;
+
+typedef struct GwfmtState {
   GwText       text;
-  struct PPArg_ *ppa;
+  PPArg       *ppa;
+  Casing       cases[LastCase];
+  char         colors[LastColor][MAX_COLOR_LENGTH];
   unsigned int nindent;
-  unsigned int mark;
+  MP_Vector   *marks;        // NOTE: make it a vector?
   unsigned int base_column;
   bool         py;
   bool         unpy;
@@ -16,9 +62,14 @@ struct GwfmtState {
   bool         show_line;
   bool         header;
   bool         use_tabs;
-};
+  bool         error;
+  bool         fix;
+} GwfmtState;
+
+void gwfmt_state_init(GwfmtState *ls);
 
 typedef struct {
+  const char *filename;
   MemPool           mp;
   SymTable          *st; // only for spread
   Map               macro;
@@ -27,15 +78,15 @@ typedef struct {
   unsigned int   indent;
   unsigned int   skip_indent;
   unsigned int   nl;
-  enum char_type last;
+  enum gwfmt_char_type last;
   unsigned int   line;
   unsigned int   column;
   //  bool skip; // check_pos
   bool need_space;
 } Gwfmt;
 
-ANN void gwfmt(Gwfmt *a, const m_str, ...);
-ANN void gwfmt_util(Gwfmt *a, const m_str, ...);
+ANN int  gwfmt_util(Gwfmt *a, const char *, ...);
+ANN void gwfmt(Gwfmt *a, const char*, ...);
 ANN void gwfmt_indent(Gwfmt *a);
 ANN void gwfmt_sc(Gwfmt *a);
 ANN void gwfmt_nl(Gwfmt *a);
@@ -56,3 +107,8 @@ ANN void gwfmt_prim_def(Gwfmt *a, Prim_Def b);
 ANN void gwfmt_ast(Gwfmt *a, Ast b);
 ANN void gwfmt_type_decl(Gwfmt *a, const Type_Decl *b);
 ANN void gwfmt_variable(Gwfmt *a, const Variable *b);
+
+
+void set_color(struct GwfmtState *ls, const FmtColor b,
+               const char *color);
+bool run_config(struct GwfmtState *ls, const char *filename);
