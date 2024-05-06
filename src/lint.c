@@ -59,15 +59,15 @@ ANN void reset_color(Gwfmt *a) {
 }
 
 void keyword(Gwfmt *a, const char *kw) {
-  COLOR(a, a->ls->colors[KeywordColor], kw);
+  COLOR(a, a->ls->config->colors[KeywordColor], kw);
 }
 
 void flow(Gwfmt *a, const char *kw) {
-  COLOR(a, a->ls->colors[FlowColor], kw);
+  COLOR(a, a->ls->config->colors[FlowColor], kw);
 }
 ANN static void check_tag(Gwfmt *a, const Tag * tag, const CaseType ct,
                           char* color) {
-  const Casing casing = a->ls->cases[ct];
+  const Casing casing = a->ls->config->cases[ct];
   if(!casing.check(s_name(tag->sym))) {
    a->ls->error = true;
    if(!a->ls->fix) {
@@ -94,7 +94,7 @@ ANN static void check_tag(Gwfmt *a, const Tag * tag, const CaseType ct,
 }
 
 ANN void type_tag(Gwfmt *a, Tag *tag) {
-  check_tag(a, tag, TypeCase, a->ls->colors[TypeColor]);
+  check_tag(a, tag, TypeCase, a->ls->config->colors[TypeColor]);
 }
 
 ANN int gwfmt_util(Gwfmt *a, const char *fmt, ...) {
@@ -191,22 +191,22 @@ ANN static m_str gwfmt_verbatim(Gwfmt *a, m_str b) {
 ANN static void gwfmt_op(Gwfmt *a, const Symbol b) {
   m_str s = s_name(b);
   handle_space(a, *s);
-  color(a, a->ls->colors[OpColor]);
+  color(a, a->ls->config->colors[OpColor]);
   gwfmt_verbatim(a, s_name(b));
   reset_color(a);
 }
 
 ANN void modifier(Gwfmt *a, const char *mod) {
-  COLOR(a, a->ls->colors[ModColor], mod);
+  COLOR(a, a->ls->config->colors[ModColor], mod);
 }
 
 ANN void operator(Gwfmt *a, const char *op) {
-  COLOR(a, a->ls->colors[OpColor], op);
+  COLOR(a, a->ls->config->colors[OpColor], op);
 }
 
 
 ANN void punctuation(Gwfmt *a, const char *punct) {
-  COLOR(a, a->ls->colors[PunctuationColor], punct);
+  COLOR(a, a->ls->config->colors[PunctuationColor], punct);
 }
 
 ANN void gwfmt_lbrace(Gwfmt *a) {
@@ -289,7 +289,7 @@ ANN static void gwfmt_symbol(Gwfmt *a, Symbol b) {
   const m_str s = s_name(b);
   if (!strcmp(s, "true") || !strcmp(s, "false") || !strcmp(s, "maybe") ||
       !strcmp(s, "adc") || !strcmp(s, "dac") || !strcmp(s, "now"))
-    COLOR(a, a->ls->colors[SpecialColor], s_name(b));
+    COLOR(a, a->ls->config->colors[SpecialColor], s_name(b));
   else
     gwfmt(a, s);
 }
@@ -337,7 +337,7 @@ ANN static void gwfmt_specialized_list(Gwfmt *a, Specialized_List b) {
       gwfmt_type_decl(a, spec->td);
       gwfmt_space(a);
     }
-    COLOR(a, a->ls->colors[TypeColor], s_name(spec->tag.sym));
+    COLOR(a, a->ls->config->colors[TypeColor], s_name(spec->tag.sym));
     if (spec->traits) {
       gwfmt_space(a);
       gwfmt_traits(a, spec->traits);
@@ -419,7 +419,7 @@ ANN static void gwfmt_prim_dict(Gwfmt *a, Exp* *b) {
 }
 
 ANN static void gwfmt_effect(Gwfmt *a, Symbol b) {
-  COLOR(a, a->ls->colors[FlowColor], s_name(b));
+  COLOR(a, a->ls->config->colors[FlowColor], s_name(b));
 }
 
 ANN static void gwfmt_perform(Gwfmt *a) {
@@ -467,7 +467,7 @@ ANN void gwfmt_type_decl(Gwfmt *a, const Type_Decl *b) {
     if (fptr->base->effects.ptr) gwfmt_effects(a, &fptr->base->effects);
     gwfmt_rparen(a);
   } else if (b->tag.sym)
-    COLOR(a, a->ls->colors[TypeColor], s_name(b->tag.sym));
+    COLOR(a, a->ls->config->colors[TypeColor], s_name(b->tag.sym));
   if (b->types) gwfmt_tmplarg_list(a, b->types);
   for (m_uint i = 0; i < b->option; ++i) gwfmt(a, "?");
   if (b->array) gwfmt_array_sub2(a, b->array);
@@ -569,7 +569,7 @@ ANN static void gwfmt_octal(Gwfmt *a, m_int num) {
 }
 
 ANN static void gwfmt_prim_num(Gwfmt *a, struct gwint *b) {
-  color(a, a->ls->colors[NumberColor]);
+  color(a, a->ls->config->colors[NumberColor]);
   switch(b->int_type) {
     case gwint_decimal: gwfmt_decimal(a, b->num); break;
     case gwint_binary:  gwfmt_binary(a, b->num); break;
@@ -580,7 +580,7 @@ ANN static void gwfmt_prim_num(Gwfmt *a, struct gwint *b) {
 }
 
 ANN static void gwfmt_prim_float(Gwfmt *a, m_float *b) {
-  color(a, a->ls->colors[NumberColor]);
+  color(a, a->ls->config->colors[NumberColor]);
   if (*b == floor(*b))
     gwfmt(a, "%li.", (m_int)*b);
   else
@@ -593,13 +593,13 @@ ANN static void gwfmt_string(Gwfmt *a, m_str str) {
   while((s = gwfmt_verbatim(a, s))) {
       reset_color(a);
       gwfmt_nl(a);
-      color(a, a->ls->colors[StringColor]);
+      color(a, a->ls->config->colors[StringColor]);
   }
 }
 
 ANN static void gwfmt_delim(Gwfmt *a, uint16_t delim) {
   reset_color(a);
-  color(a, a->ls->colors[StringColor]);
+  color(a, a->ls->config->colors[StringColor]);
   if(delim) {
     gwfmt(a, "%.*c",  delim, '#');
   }
@@ -608,7 +608,7 @@ ANN static void gwfmt_delim(Gwfmt *a, uint16_t delim) {
 
 ANN static void gwfmt_delim2(Gwfmt *a, uint16_t delim) {
   reset_color(a);
-  color(a, a->ls->colors[StringColor]);
+  color(a, a->ls->config->colors[StringColor]);
   gwfmt(a, "\"");
   if(delim) {
     gwfmt(a, "%.*c",  delim, '#');
@@ -637,7 +637,7 @@ ANN static void gwfmt_prim_hack(Gwfmt *a, Exp* *b) {
 }
 
 ANN static void gwfmt_prim_char(Gwfmt *a, m_str *b) {
-  color(a, a->ls->colors[StringColor]);
+  color(a, a->ls->config->colors[StringColor]);
   gwfmt(a, "'%s'", *b);
   reset_color(a);
 }
@@ -659,7 +659,7 @@ ANN static void gwfmt_prim(Gwfmt *a, Exp_Primary *b) {
 }
 
 ANN static void variable_tag(Gwfmt *a, const Tag *b) {
-    check_tag(a, b, VariableCase, a->ls->colors[VariableColor]);
+    check_tag(a, b, VariableCase, a->ls->config->colors[VariableColor]);
 }
 
 ANN static void gwfmt_var_decl(Gwfmt *a, const Var_Decl *b) {
@@ -845,23 +845,23 @@ ANN static void gwfmt_prim_interp(Gwfmt *a, Exp* *b) {
   Exp* e = *b;
   const uint16_t delim = e->d.prim.d.string.delim;
   gwfmt_delim(a, delim);
-  color(a, a->ls->colors[PunctuationColor]);
+  color(a, a->ls->config->colors[PunctuationColor]);
   while (e) {
     if (e->exp_type == ae_exp_primary && e->d.prim.prim_type == ae_prim_str) {
       gwfmt_string(a,  e->d.prim.d.string.data);
     } else {
       reset_color(a);
-      COLOR(a, a->ls->colors[PunctuationColor], "${");
+      COLOR(a, a->ls->config->colors[PunctuationColor], "${");
       gwfmt_space(a);
       gwfmt_exp_func[e->exp_type](a, &e->d);
       gwfmt_space(a);
-      COLOR(a, a->ls->colors[PunctuationColor], "}");
-      color(a, a->ls->colors[StringColor]);
+      COLOR(a, a->ls->config->colors[PunctuationColor], "}");
+      color(a, a->ls->config->colors[StringColor]);
     }
     e = e->next;
   }
   gwfmt_delim2(a, delim);
-  color(a, a->ls->colors[StringColor]);
+  color(a, a->ls->config->colors[StringColor]);
 }
 
 ANN static void gwfmt_array_sub2(Gwfmt *a, Array_Sub b) {
@@ -1175,26 +1175,26 @@ ANN static void gwfmt_stmt_pp(Gwfmt *a, Stmt_PP b) {
     if(a->ls->minimize)
       return;
     gwfmt_indent(a);
-    color(a, a->ls->colors[PunctuationColor]);
+    color(a, a->ls->config->colors[PunctuationColor]);
     gwfmt(a, "#! ");
     if(b->data)
       gwfmt(a, b->data);
     reset_color(a);
     return;
   } else {
-    color(a, a->ls->colors[PPColor]);
+    color(a, a->ls->config->colors[PPColor]);
 //    color(a, "{-M}");
     gwfmt(a, "#%s", pp[b->pp_type]);
     reset_color(a);
     gwfmt_space(a);
     if (b->pp_type == ae_pp_locale) {
-      COLOR(a, a->ls->colors[FunctionColor], s_name(b->xid));
+      COLOR(a, a->ls->config->colors[FunctionColor], s_name(b->xid));
       gwfmt(a, s_name(b->xid));
       gwfmt_space(a);
       if(b->exp) gwfmt_exp(a, b->exp);
     } else if (b->pp_type == ae_pp_include) {
       if(a->ls->ppa->fmt) {
-        color(a,  a->ls->colors[StringColor]);
+        color(a,  a->ls->config->colors[StringColor]);
         gwfmt(a, "<%s>", b->data);
       }
     } else if(b->data)
@@ -1276,7 +1276,7 @@ ANN static void gwfmt_func_base(Gwfmt *a, Func_Base *b) {
   if (!fbflag(b, fbflag_unary)) {
     if (!fbflag(b, fbflag_op)) {
       check_tag(a, &b->tag, FunctionCase, 
-a->ls->colors[FunctionColor]
+a->ls->config->colors[FunctionColor]
                 );
     } else gwfmt_op(a, b->tag.sym);
     if (b->tmpl) gwfmt_tmpl(a, b->tmpl);
@@ -1482,15 +1482,17 @@ ANN void gwfmt_ast(Gwfmt *a, Ast b) {
 void set_color(struct GwfmtState *ls, const FmtColor b,
                const char *color) {
   const size_t len = strlen(color);
-  ls->colors[b][0] = '{';
-  strncpy(ls->colors[b] + 1, color, 61);
-  ls->colors[b][len + 1] = '}';
+  ls->config->colors[b][0] = '{';
+  strncpy(ls->config->colors[b] + 1, color, 61);
+  ls->config->colors[b][len + 1] = '}';
 }
 
+static Config gwfmt_config;
 void gwfmt_state_init(GwfmtState *ls) {
-  ls->cases[TypeCase] = *get_casing(PASCALCASE);
-  ls->cases[VariableCase] = *get_casing(CAMELCASE);
-  ls->cases[FunctionCase] = *get_casing(SNAKECASE);
+  ls->config = &gwfmt_config;
+  ls->config->cases[TypeCase] = *get_casing(PASCALCASE);
+  ls->config->cases[VariableCase] = *get_casing(CAMELCASE);
+  ls->config->cases[FunctionCase] = *get_casing(SNAKECASE);
   set_color(ls, StringColor, "/Y");
   set_color(ls, KeywordColor, "+G");
   set_color(ls, FlowColor, "+/G");

@@ -39,16 +39,21 @@ typedef enum FmtColor {
 
 #define MAX_COLOR_LENGTH 8
 
+// TODO: use that!!!!!
 typedef struct GwFmtMark {
   uint16_t line;
   char sign[16];
 } GwFmtMark;
+  
+typedef struct Config {
+  Casing       cases[LastCase];
+  char         colors[LastColor][MAX_COLOR_LENGTH];
+} Config;
 
 typedef struct GwfmtState {
   GwText       text;
   PPArg       *ppa;
-  Casing       cases[LastCase];
-  char         colors[LastColor][MAX_COLOR_LENGTH];
+  Config      *config;
   unsigned int nindent;
   MP_Vector   *marks;        // NOTE: make it a vector?
   unsigned int base_column;
