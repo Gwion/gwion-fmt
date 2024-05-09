@@ -68,14 +68,15 @@ void flow(Gwfmt *a, const char *kw) {
 ANN static void check_tag(Gwfmt *a, const Tag * tag, const CaseType ct,
                           char* color) {
   const Casing casing = a->ls->config->cases[ct];
-  if(!casing.check(s_name(tag->sym))) {
+  if(a->ls->check_case && !casing.check(s_name(tag->sym))) {
    a->ls->error = true;
-   if(!a->ls->fix) {
+   if(!a->ls->fix_case) {
       char main[256];
       char info[256];
       snprintf(main, sizeof(main) - 1, "invalid {Y+}%s{0} casing", ct_name[ct]);
       snprintf(info, sizeof(info) - 1, "should be {W+}%s{0} case", casing.name);
-      gwlog_error(main, info, a->filename, tag->loc, 0);
+      printf("filename: %s\n", a->filename);
+      gwlog_error(main, info, a->filename ?: "/dev/null", tag->loc, 0);
     } else {
       char buf[256];
       const char *name = s_name(tag->sym);

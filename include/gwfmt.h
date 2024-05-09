@@ -68,7 +68,8 @@ typedef struct GwfmtState {
   bool         header;
   bool         use_tabs;
   bool         error;
-  bool         fix;
+  bool         fix_case;
+  bool         check_case;
 } GwfmtState;
 
 void gwfmt_state_init(GwfmtState *ls);

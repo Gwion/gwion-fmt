@@ -84,7 +84,8 @@ enum {
 //  MARK,
   EXPAND,
   MINIFY,
-  CASING,
+  FIX_CASING,
+  CHECK_CASING,
   CONFIG,
   COLOR,
   NOPTIONS
@@ -110,7 +111,9 @@ static void setup_options(cmdapp_t *app, cmdopt_t *opt) {
   cmdapp_set(app, 'm', "minify", CMDOPT_TAKESARG, NULL, "minimize input",
              "bool", &opt[MINIFY]);
   cmdapp_set(app, 'f', "fix", CMDOPT_TAKESARG, NULL, "fix casing",
-             "bool", &opt[CASING]);
+             "bool", &opt[FIX_CASING]);
+  cmdapp_set(app, 'w', "fix", CMDOPT_TAKESARG, NULL, "check casing",
+             "bool", &opt[CHECK_CASING]);
   cmdapp_set(app, 'C', "config", CMDOPT_TAKESARG, NULL, "config file",
              "filename", &opt[CONFIG]);
   cmdapp_set(app, 'c', "color", CMDOPT_TAKESARG, NULL, "enable or disable {R}c{G}o{B}l{M}o{Y}r{C}s{0}",
@@ -179,7 +182,10 @@ static void myproc(void *data, cmdopt_t *option, const char *arg) {
         ls->minimize = arg2bool(option->value);
         break;
       case 'f':
-        ls->fix = arg2bool(option->value);
+        ls->fix_case = arg2bool(option->value);
+        break;
+      case 'w':
+        ls->check_case = arg2bool(option->value);
         break;
       case 'C':
         run_config(ls, option->value);
@@ -221,7 +227,14 @@ int main(int argc, char **argv) {
   SymTable *    st  = new_symbol_table(mp, 65347); // could be smaller
   PPArg ppa = {.fmt = 1};
   pparg_ini(mp, &ppa);
-  struct GwfmtState ls = {.color = isatty(1) ? COLOR_AUTO : COLOR_NEVER, .show_line = true, .header = true, .nindent = 2, .ppa = &ppa, .minimize = false };
+  struct GwfmtState ls = {
+    .color = isatty(1) ? COLOR_AUTO : COLOR_NEVER,
+    .show_line = true,
+    .header = true,
+    .nindent = 2,
+    .ppa = &ppa,
+    .minimize = false,
+    .check_case = true};
   tcol_override_color_checks(ls.color);
   gwfmt_state_init(&ls);
   text_init(&ls.text, mp);

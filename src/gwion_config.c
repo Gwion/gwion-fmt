@@ -24,7 +24,8 @@ runtime_bool_func(pretty, pretty);
 runtime_bool_func(show_lines, show_line);
 runtime_bool_func(header, header);
 runtime_bool_func(use_tabs, use_tabs);
-runtime_bool_func(fix, fix);
+runtime_bool_func(fix_case, fix_case);
+runtime_bool_func(check_case, check_case);
 
 static MFUN(fmt_color) {
   struct GwfmtState *ls = **(struct GwfmtState***)MEM(0);
@@ -93,7 +94,8 @@ GWION_IMPORT(GwFmt) {
  import_bool_fun(header); 
  import_bool_fun(show_lines); 
  import_bool_fun(use_tabs); 
- import_bool_fun(fix); 
+ import_bool_fun(fix_case); 
+ import_bool_fun(check_case); 
 
   GWI_B(gwi_func_ini(gwi, "void", "color"));
     GWI_B(gwi_func_arg(gwi, "ColorWhen", "arg"));
