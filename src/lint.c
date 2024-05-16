@@ -952,6 +952,19 @@ ANN static void gwfmt_stmt_spread(Gwfmt *a, Spread_Def b) {
   gwfmt_nl(a);
 }
 
+ANN static void gwfmt_stmt_using(Gwfmt *a, Stmt_Using b) {
+  COLOR(a, a->ls->config->colors[KeywordColor], "using");
+  gwfmt_space(a);
+  if(b->alias.sym) {
+    gwfmt_symbol(a, b->alias.sym);
+    gwfmt_space(a);
+    gwfmt(a, ":");
+    gwfmt_exp(a, b->d.exp);
+  } else
+    gwfmt_type_decl(a, b->d.td);
+  gwfmt_sc(a);
+}
+
 DECL_STMT_FUNC(gwfmt, void, Gwfmt *)
 ANN static void gwfmt_stmt_while(Gwfmt *a, Stmt_Flow b) {
   if (!b->is_do) {
