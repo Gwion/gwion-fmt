@@ -805,7 +805,7 @@ ANN static void gwfmt_exp_if(Gwfmt *a, Exp_If *b) {
 ANN static void gwfmt_exp_dot(Gwfmt *a, Exp_Dot *b) {
   gwfmt_exp(a, b->base);
   gwfmt(a, ".");
-  gwfmt_symbol(a, b->xid);
+  gwfmt_symbol(a, b->tag.sym);
 }
 
 ANN static void gwfmt_lambda_list(Gwfmt *a, Arg_List b) {
@@ -1428,7 +1428,6 @@ ANN void gwfmt_enum_def(Gwfmt *a, Enum_Def b) {
   gwfmt_flag(a, b);
   type_tag(a, &b->tag);
   gwfmt_space(a);
-  if(b->ext) gwfmt_extends(a, b->ext);
   gwfmt_lbrace(a);
   a->indent++;
   gwfmt_enum_list(a, b->list);
@@ -1445,7 +1444,6 @@ ANN void gwfmt_union_def(Gwfmt *a, Union_Def b) {
   gwfmt_space(a);
   if (b->tmpl) gwfmt_tmpl(a, b->tmpl);
   gwfmt_space(a);
-  if(b->ext) gwfmt_extends(a, b->ext);
   gwfmt_lbrace(a);
   gwfmt_nl(a);
   INDENT(a, gwfmt_variable_list(a, b->l))
