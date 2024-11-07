@@ -630,10 +630,12 @@ ANN static void gwfmt_prim_array(Gwfmt *a, Array_Sub *b) {
 ANN static void gwfmt_prim_range(Gwfmt *a, Range **b) { gwfmt_range(a, *b); }
 
 ANN static void gwfmt_prim_hack(Gwfmt *a, Exp* *b) {
+  reset_color(a);
   punctuation(a, "<<<");
   gwfmt_space(a);
   gwfmt_exp(a, *b);
   gwfmt_space(a);
+  reset_color(a);
   punctuation(a, ">>>");
 }
 
@@ -834,6 +836,14 @@ ANN static void gwfmt_exp_lambda(Gwfmt *a, Exp_Lambda *b) {
   }
 }
 
+ANN static void gwfmt_exp_named(Gwfmt *a, Exp_Named *b) {
+  gwfmt_symbol(a, b->tag.sym);
+  gwfmt_space(a);
+  gwfmt_op(a, insert_symbol(a->st, "="));
+  gwfmt_space(a);
+  gwfmt_exp(a, b->exp);
+}
+
 DECL_EXP_FUNC(gwfmt, void, Gwfmt *)
 ANN void gwfmt_exp(Gwfmt *a, Exp* b) {
   if(b->paren) gwfmt_lparen(a);
@@ -955,14 +965,44 @@ ANN static void gwfmt_stmt_spread(Gwfmt *a, Spread_Def b) {
 ANN static void gwfmt_stmt_using(Gwfmt *a, Stmt_Using b) {
   COLOR(a, a->ls->config->colors[KeywordColor], "using");
   gwfmt_space(a);
-  if(b->alias.sym) {
-    gwfmt_symbol(a, b->alias.sym);
+  if(b->tag.sym) {
+    gwfmt_symbol(a, b->tag.sym);
     gwfmt_space(a);
     gwfmt(a, ":");
     gwfmt_exp(a, b->d.exp);
   } else
     gwfmt_type_decl(a, b->d.td);
   gwfmt_sc(a);
+}
+
+ANN static void gwfmt_import_list(Gwfmt *a, ImportList b) {
+  a->indent++;
+  for(uint32_t i = 0; i < b->len; i++) {
+    struct Stmt_Using_ item = *mp_vector_at(b, struct Stmt_Using_, i);
+    gwfmt_nl(a);
+    gwfmt_indent(a);
+    variable_tag(a, &item.tag);
+    if(item.d.exp) {
+      gwfmt_space(a);
+      gwfmt(a, ":");
+      gwfmt_space(a);
+      gwfmt_exp(a, item.d.exp);
+    }
+  }
+  a->indent--;
+}
+
+ANN static void gwfmt_stmt_import(Gwfmt *a, Stmt_Import b) {
+  COLOR(a, a->ls->config->colors[KeywordColor], "import");
+  gwfmt_space(a);
+  type_tag(a, &b->tag);
+  if(b->selection) {
+    gwfmt_space(a);
+    gwfmt(a, ":");
+    gwfmt_import_list(a, b->selection);
+  }
+  gwfmt_sc(a);
+  gwfmt_nl(a);
 }
 
 DECL_STMT_FUNC(gwfmt, void, Gwfmt *)
@@ -1173,7 +1213,7 @@ ANN static void gwfmt_stmt_case(Gwfmt *a, Stmt_Match b) {
 }
 
 static const char *pp[] = {"!",     "include", "define", "pragma", "undef",
-                           "ifdef", "ifndef",  "else",   "endif",  "import", "locale"};
+                           "ifdef", "ifndef",  "else",   "endif",  "locale"};
 
 ANN static void force_nl(Gwfmt *a) {
   if(a->ls->minimize) {
@@ -1336,6 +1376,13 @@ ANN void gwfmt_func_def(Gwfmt *a, Func_Def b) {
   gwfmt_nl(a);
 }
 
+ANN static void gwfmt_extends(Gwfmt *a, const Type_Decl *td) {
+    keyword(a, "extends");
+    gwfmt_space(a);
+    gwfmt_type_decl(a, td);
+    gwfmt_space(a);
+}
+
 ANN void gwfmt_class_def(Gwfmt *a, Class_Def b) {
   keyword(a, !cflag(b, cflag_struct) ? "class" : "struct");
   gwfmt_space(a);
@@ -1343,12 +1390,8 @@ ANN void gwfmt_class_def(Gwfmt *a, Class_Def b) {
   type_tag(a, &b->base.tag);
   if (b->base.tmpl) gwfmt_tmpl(a, b->base.tmpl);
   gwfmt_space(a);
-  if (b->base.ext) {
-    keyword(a, "extends");
-    gwfmt_space(a);
-    gwfmt_type_decl(a, b->base.ext);
-    gwfmt_space(a);
-  }
+  if (b->base.ext)
+    gwfmt_extends(a, b->base.ext);
   if (b->traits) gwfmt_traits(a, b->traits);
   gwfmt_lbrace(a);
   if (!a->ls->builtin) {
@@ -1385,6 +1428,7 @@ ANN void gwfmt_enum_def(Gwfmt *a, Enum_Def b) {
   gwfmt_flag(a, b);
   type_tag(a, &b->tag);
   gwfmt_space(a);
+  if(b->ext) gwfmt_extends(a, b->ext);
   gwfmt_lbrace(a);
   a->indent++;
   gwfmt_enum_list(a, b->list);
@@ -1401,6 +1445,7 @@ ANN void gwfmt_union_def(Gwfmt *a, Union_Def b) {
   gwfmt_space(a);
   if (b->tmpl) gwfmt_tmpl(a, b->tmpl);
   gwfmt_space(a);
+  if(b->ext) gwfmt_extends(a, b->ext);
   gwfmt_lbrace(a);
   gwfmt_nl(a);
   INDENT(a, gwfmt_variable_list(a, b->l))
@@ -1440,10 +1485,7 @@ ANN void gwfmt_type_def(Gwfmt *a, Type_Def b) {
 }
 
 ANN static void gwfmt_extend_def(Gwfmt *a, Extend_Def b) {
-  keyword(a, "extends");
-  gwfmt_space(a);
-  gwfmt_type_decl(a, b->td);
-  gwfmt_space(a);
+  gwfmt_extends(a, b->td);
   punctuation(a, ":");
   gwfmt_space(a);
   gwfmt_id_list(a, b->traits);
