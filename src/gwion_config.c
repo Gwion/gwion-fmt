@@ -136,7 +136,7 @@ static bool init_gwion(Gwion gwion) {
 }
 
 static bool run(Gwion gwion, const char *filename) {
-  const bool ret = compile_filename(gwion, filename);
+  const bool ret = compile_filename(gwion, filename, NULL);
   if(ret) 
     vm_force_run(gwion->vm);
   return ret;

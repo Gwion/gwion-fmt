@@ -44,32 +44,33 @@ typedef struct GwFmtMark {
   uint16_t line;
   char sign[16];
 } GwFmtMark;
-  
+MK_VECTOR_TYPE(GwFmtMark, mark)
+
 typedef struct Config {
   Casing       cases[LastCase];
   char         colors[LastColor][MAX_COLOR_LENGTH];
 } Config;
 
 typedef struct GwfmtState {
-  GwText       text;
-  PPArg       *ppa;
-  Config      *config;
-  unsigned int nindent;
-  MP_Vector   *marks;        // NOTE: make it a vector?
-  unsigned int base_column;
-  bool         py;
-  bool         unpy;
-  bool         onlypy;
-  bool         minimize;
-  bool         color;
-  bool         builtin;
-  bool         pretty;
-  bool         show_line;
-  bool         header;
-  bool         use_tabs;
-  bool         error;
-  bool         fix_case;
-  bool         check_case;
+  GwText         text;
+  PPArg         *ppa;
+  Config        *config;
+  unsigned int   nindent;
+  GwFmtMarkList *marks;
+  unsigned int   base_column;
+  bool           py;
+  bool           unpy;
+  bool           onlypy;
+  bool           minimize;
+  bool           color;
+  bool           builtin;
+  bool           pretty;
+  bool           show_line;
+  bool           header;
+  bool           use_tabs;
+  bool           error;
+  bool           fix_case;
+  bool           check_case;
 } GwfmtState;
 
 void gwfmt_state_init(GwfmtState *ls);
@@ -102,15 +103,15 @@ ANN void gwfmt_lparen(Gwfmt *a);
 ANN void gwfmt_rparen(Gwfmt *a);
 ANN void gwfmt_lbrace(Gwfmt *a);
 ANN void gwfmt_rbrace(Gwfmt *a);
-ANN void gwfmt_exp(Gwfmt *a, Exp* b);
-ANN void gwfmt_func_def(Gwfmt *a, Func_Def b);
-ANN void gwfmt_class_def(Gwfmt *a, Class_Def b);
-ANN void gwfmt_enum_def(Gwfmt *a, Enum_Def b);
-ANN void gwfmt_union_def(Gwfmt *a, Union_Def b);
-ANN void gwfmt_fptr_def(Gwfmt *a, Fptr_Def b);
-ANN void gwfmt_type_def(Gwfmt *a, Type_Def b);
-ANN void gwfmt_prim_def(Gwfmt *a, Prim_Def b);
-ANN void gwfmt_ast(Gwfmt *a, Ast b);
+ANN void gwfmt_exp(Gwfmt *a, const Exp* b);
+ANN void gwfmt_func_def(Gwfmt *a, const Func_Def b);
+ANN void gwfmt_class_def(Gwfmt *a, const Class_Def b);
+ANN void gwfmt_enum_def(Gwfmt *a, const Enum_Def b);
+ANN void gwfmt_union_def(Gwfmt *a, const Union_Def b);
+ANN void gwfmt_fptr_def(Gwfmt *a, const Fptr_Def b);
+ANN void gwfmt_type_def(Gwfmt *a, const Type_Def b);
+ANN void gwfmt_prim_def(Gwfmt *a, const Prim_Def b);
+ANN void gwfmt_ast(Gwfmt *a, const Ast b);
 ANN void gwfmt_type_decl(Gwfmt *a, const Type_Decl *b);
 ANN void gwfmt_variable(Gwfmt *a, const Variable *b);
 
