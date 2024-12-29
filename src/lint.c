@@ -120,7 +120,7 @@ ANN static void handle_space(Gwfmt *a, const char c) {
 
       (a->last == cht_colon /*&& (*buf == cht_lbrack || *buf == cht_op)*/)) {
     text_add(&a->ls->text, " ");
-    a->column += 1;
+    a->pos.column += 1;
   }
   a->need_space = 0;
 }
@@ -140,7 +140,7 @@ ANN void gwfmt(Gwfmt *a, const  char *fmt, ...) {
   a->last = cht(buf[n - 1]);
   mp_free2(a->mp, n + 1, buf);
   va_end(ap);
-  a->column += n;
+  a->pos.column += n;
 }
 
 ANN void gwfmt_space(Gwfmt *a) {
@@ -156,8 +156,8 @@ ANN void gwfmt_nl(Gwfmt *a) {
     if (a->nl < 2) {
       gwfmt_util(a, "\n");
       if (!a->ls->pretty && a->ls->show_line) {
-        gwfmt_util(a, " {-}% 4u{0}", a->line);//root
-//        if (a->ls->mark == a->line)
+        gwfmt_util(a, " {-}% 4u{0}", a->pos.line);//root
+//        if (a->ls->mark == a->pos.line)
 //          gwfmt_util(a, " {+R}>{0}");
 //        else
           gwfmt_util(a, "  ");
@@ -165,8 +165,8 @@ ANN void gwfmt_nl(Gwfmt *a) {
       }
     }
   }
-  a->column = a->ls->base_column;
-  a->line++;
+  a->pos.column = a->ls->base_column;
+  a->pos.line++;
   a->nl = nl;
 }
 
@@ -183,7 +183,7 @@ ANN static m_str gwfmt_verbatim(Gwfmt *a, m_str b) {
        return b;
      }
      text_add(&a->ls->text, c); 
-     a->column++;
+     a->pos.column++;
   }
   a->last = cht(last);
   return NULL;
@@ -957,7 +957,12 @@ ANN static void gwfmt_stmt_spread(Gwfmt *a, const Spread_Def b) {
   PPArg ppa = {};
   pparg_ini(a->mp, &ppa);
   FILE *file = fmemopen(b->data, strlen(b->data), "r");
-  struct AstGetter_ arg = {"", file, a->st, .ppa = &ppa};
+  struct AstGetter_ arg = {
+    .name = "", 
+    .f = file,
+    .st = a->st, 
+    .ppa = &ppa
+  };
   Ast tmp =    parse(&arg);
   if(tmp) gwfmt_ast(a, tmp);
   pparg_end(&ppa);
@@ -1224,42 +1229,30 @@ static const char *pp[] = {"!",     "include", "define", "pragma", "undef",
 ANN static void force_nl(Gwfmt *a) {
   if(a->ls->minimize) {
     text_add(&a->ls->text, "\n");
-    a->line++;
+    a->pos.line++;
   }
 }
 
 ANN static void gwfmt_stmt_pp(Gwfmt *a, const  Stmt_PP b) {
   if (b->pp_type == ae_pp_nl) return;
   if (a->last != cht_nl && b->pp_type != ae_pp_include) gwfmt_nl(a);
-  if (b->pp_type == ae_pp_comment) {
-    if(a->ls->minimize)
-      return;
-    gwfmt_indent(a);
-    color(a, a->ls->config->colors[PunctuationColor]);
-    gwfmt(a, "#! ");
-    if(b->data)
-      gwfmt(a, b->data);
-    reset_color(a);
-    return;
-  } else {
-    color(a, a->ls->config->colors[PPColor]);
+  color(a, a->ls->config->colors[PPColor]);
 //    color(a, "{-M}");
-    gwfmt(a, "#%s", pp[b->pp_type]);
-    reset_color(a);
+  gwfmt(a, "#%s", pp[b->pp_type]);
+  reset_color(a);
+  gwfmt_space(a);
+  if (b->pp_type == ae_pp_locale) {
+    COLOR(a, a->ls->config->colors[FunctionColor], s_name(b->xid));
+    gwfmt(a, s_name(b->xid));
     gwfmt_space(a);
-    if (b->pp_type == ae_pp_locale) {
-      COLOR(a, a->ls->config->colors[FunctionColor], s_name(b->xid));
-      gwfmt(a, s_name(b->xid));
-      gwfmt_space(a);
-      if(b->exp) gwfmt_exp(a, b->exp);
-    } else if (b->pp_type == ae_pp_include) {
-      if(a->ls->ppa->fmt) {
-        color(a,  a->ls->config->colors[StringColor]);
-        gwfmt(a, "<%s>", b->data);
-      }
-    } else if(b->data)
-       gwfmt(a, b->data);
-  }
+    if(b->exp) gwfmt_exp(a, b->exp);
+  } else if (b->pp_type == ae_pp_include) {
+    if(a->ls->fmt) {
+      color(a,  a->ls->config->colors[StringColor]);
+      gwfmt(a, "<%s>", b->data);
+    }
+  } else if(b->data)
+     gwfmt(a, b->data);
   reset_color(a);
   force_nl(a);
   a->last = cht_nl;

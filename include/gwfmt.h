@@ -71,6 +71,7 @@ typedef struct GwfmtState {
   bool           error;
   bool           fix_case;
   bool           check_case;
+  bool           fmt;
 } GwfmtState;
 
 void gwfmt_state_init(GwfmtState *ls);
@@ -86,8 +87,7 @@ typedef struct {
   unsigned int   skip_indent;
   unsigned int   nl;
   enum gwfmt_char_type last;
-  unsigned int   line;
-  unsigned int   column;
+  pos_t          pos;
   //  bool skip; // check_pos
   bool need_space;
 } Gwfmt;

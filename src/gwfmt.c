@@ -9,14 +9,15 @@
 #include "cmdapp.h"
 #include "arg.h"
 
-ANN static inline void gwfmt_file(Gwfmt *a, const m_str name) {
+ANN static inline void gwfmt_file(Gwfmt *a, const char *name) {
   gwfmt_util(a, "{-}File:{0} {+}%s{0}\n", name);
 }
 
 ANN static int gwfmt_gw(struct AstGetter_ *arg, struct GwfmtState *ls) {
   const Ast ast = parse(arg);
   if (!ast) return 1;
-  Gwfmt l = {.mp = arg->st->p, .st = arg->st, .filename = arg->name, .ls = ls, .line = 1, .last = cht_nl };
+  Gwfmt l = {.mp = arg->st->p, .st = arg->st, .filename = arg->name, .ls = ls, .last = cht_nl };
+  pos_ini(&l.pos);
   if (!ls->pretty) {
     if (l.ls->header) {
       gwfmt_util(&l, "       {N}┏━━━{0} ");
@@ -61,7 +62,13 @@ ANN static int gwfmt_unpy(struct AstGetter_ *arg, struct GwfmtState *ls) {
   int ret = 0;
   if (!ls->onlypy) {
     FILE *            f       = fmemopen(ptr, sz, "r");
-    struct AstGetter_ new_arg = {arg->name, f, arg->st, .ppa = arg->ppa};
+    struct AstGetter_ new_arg = {
+      .name = arg->name, 
+      .f = f, 
+      .st = arg->st, 
+      .ppa = arg->ppa, 
+      .fmt = ls->fmt
+    };
     ret                       = gwfmt_gw(&new_arg, ls);
     fclose(f);
   } else
@@ -176,7 +183,7 @@ static void myproc(void *data, cmdopt_t *option, const char *arg) {
 //        ls->mark = ARG2INT(option->value);
 //        break;
       case 'e':
-        gwarg->ppa->fmt = !arg2bool(option->value);
+        ls->fmt = !arg2bool(option->value);
         break;
       case 'm':
         ls->minimize = arg2bool(option->value);
@@ -225,7 +232,7 @@ ANN static bool gwfmt_arg_parse(GwArg *a, int argc, char **argv) {
 int main(int argc, char **argv) {
   MemPool       mp  = mempool_ini(sizeof(Exp));
   SymTable *    st  = new_symbol_table(mp, 65347); // could be smaller
-  PPArg ppa = {.fmt = 1};
+  PPArg ppa = {};
   pparg_ini(mp, &ppa);
   struct GwfmtState ls = {
     .color = isatty(1) ? COLOR_AUTO : COLOR_NEVER,
