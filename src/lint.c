@@ -91,6 +91,7 @@ ANN static void check_tag(Gwfmt *a, const  Tag * tag, const CaseType ct,
       gwlog_error("can't convert case", NULL, a->filename, tag->loc, 0);
     }
   }
+  // comments
   COLOR(a, color, s_name(tag->sym));
 }
 
@@ -124,6 +125,7 @@ ANN static void handle_space(Gwfmt *a, const char c) {
   }
   a->need_space = 0;
 }
+
 ANN void gwfmt(Gwfmt *a, const  char *fmt, ...) {
   a->nl = 0;
   va_list ap;
@@ -295,6 +297,11 @@ ANN static void gwfmt_symbol(Gwfmt *a, const Symbol b) {
     gwfmt(a, s);
 }
 
+ANN static void gwfmt_tag(Gwfmt *a, const Tag *b) {
+  // check comments
+  gwfmt_symbol(a, b->sym);
+}
+
 ANN static void gwfmt_array_sub(Gwfmt *a, const Array_Sub b) {
   gwfmt_lbrack(a);
   gwfmt_space(a);
@@ -314,7 +321,7 @@ ANN static void gwfmt_array_sub(Gwfmt *a, const Array_Sub b) {
 ANN static void gwfmt_taglist(Gwfmt *a, const TagList *b) {
   for(uint32_t i = 0; i < b->len; i++) {
     const Tag tag = taglist_at(b, i);
-    gwfmt_symbol(a, tag.sym);
+    gwfmt_tag(a, &tag);
     if(i < b->len - 1) {
       gwfmt_comma(a);
       gwfmt_space(a);
@@ -806,7 +813,7 @@ ANN static void gwfmt_exp_if(Gwfmt *a, const Exp_If *b) {
 ANN static void gwfmt_exp_dot(Gwfmt *a, const Exp_Dot *b) {
   gwfmt_exp(a, b->base);
   gwfmt(a, ".");
-  gwfmt_symbol(a, b->var.tag.sym);
+  gwfmt_tag(a, &b->var.tag);
 }
 
 ANN static void gwfmt_lambda_list(Gwfmt *a, const ArgList *b) {
@@ -838,7 +845,7 @@ ANN static void gwfmt_exp_lambda(Gwfmt *a, const Exp_Lambda *b) {
 }
 
 ANN static void gwfmt_exp_named(Gwfmt *a, const Exp_Named *b) {
-  gwfmt_symbol(a, b->tag.sym);
+  gwfmt_tag(a, &b->tag);
   gwfmt_space(a);
   gwfmt_op(a, insert_symbol(a->st, "="));
   gwfmt_space(a);
@@ -851,6 +858,7 @@ ANN void gwfmt_exp1(Gwfmt *a, const Exp* b) {
   gwfmt_exp_func[b->exp_type](a, &b->d);
   if(b->paren) gwfmt_rparen(a);
 }
+
 ANN void gwfmt_exp(Gwfmt *a, const Exp* b) {
   gwfmt_exp1(a, b);
   NEXT(a, b, gwfmt_exp)
@@ -977,7 +985,7 @@ ANN static void gwfmt_stmt_using(Gwfmt *a, const Stmt_Using b) {
   COLOR(a, a->ls->config->colors[KeywordColor], "using");
   gwfmt_space(a);
   if(b->tag.sym) {
-    gwfmt_symbol(a, b->tag.sym);
+    gwfmt_tag(a, &b->tag);
     gwfmt_space(a);
     gwfmt(a, ":");
     gwfmt_exp(a, b->d.exp);

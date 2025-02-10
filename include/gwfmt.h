@@ -82,6 +82,8 @@ typedef struct {
   SymTable          *st; // only for spread
   Map               macro;
   struct GwfmtState *ls;
+  CommentList   *comments;
+  uint32_t       comment_index;
   //  struct pos_t pos;
   unsigned int   indent;
   unsigned int   skip_indent;
