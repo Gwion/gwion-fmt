@@ -28,6 +28,8 @@ ANN static int gwfmt_gw(struct AstGetter_ *arg, struct GwfmtState *ls) {
   } else if (l.ls->header) {
     gwfmt_util(&l, "\n");
     gwfmt_util(&l, arg->name);
+    gwfmt_util(&l, "\n");
+    gwfmt_util(&l, "\n");
   }
   gwfmt_ast(&l, ast);
   free_ast(l.mp, ast);

@@ -272,10 +272,12 @@ ANN static void gwfmt_flag(Gwfmt *a, const ae_flag b) {
   else state = false;
   if (state) gwfmt_space(a);
   state = true;
+  if (_FLAG(b, export)) {
+    modifier(a, "export");
+    gwfmt_space(a);
+  }
   if (_FLAG(b, static))
     modifier(a, "static");
-  else if (_FLAG(b, global))
-    modifier(a, "global");
   else state = false;
   if (state) gwfmt_space(a);
   state = true;
@@ -1024,6 +1026,19 @@ ANN static void gwfmt_stmt_import(Gwfmt *a, const Stmt_Import b) {
   gwfmt_nl(a);
 }
 
+ANN static void gwfmt_stmt_require(Gwfmt *a, const Stmt_Require b) {
+  COLOR(a, a->ls->config->colors[KeywordColor], "require");
+  gwfmt_space(a);
+  for(uint32_t i = 0; i < b->tags->len; i++) {
+    if(i) gwfmt(a, ".");
+    const Tag tag = taglist_at(b->tags, i);
+    gwfmt_symbol(a, tag.sym);
+  }
+  gwfmt_sc(a);
+  gwfmt_nl(a);
+}
+
+
 DECL_STMT_FUNC(gwfmt, void, Gwfmt *, const)
 ANN static void gwfmt_stmt_while(Gwfmt *a, const Stmt_Flow b) {
   if (!b->is_do) {
@@ -1231,7 +1246,7 @@ ANN static void gwfmt_stmt_case(Gwfmt *a, const struct Match *b) {
   }
 }
 
-static const char *pp[] = {"!",     "include", "define", "pragma", "undef",
+static const char *pp[] = {"!",     "define", "pragma", "undef",
                            "ifdef", "ifndef",  "else",   "endif",  "locale"};
 
 ANN static void force_nl(Gwfmt *a) {
@@ -1243,7 +1258,7 @@ ANN static void force_nl(Gwfmt *a) {
 
 ANN static void gwfmt_stmt_pp(Gwfmt *a, const  Stmt_PP b) {
   if (b->pp_type == ae_pp_nl) return;
-  if (a->last != cht_nl && b->pp_type != ae_pp_include) gwfmt_nl(a);
+  if (a->last != cht_nl) gwfmt_nl(a);
   color(a, a->ls->config->colors[PPColor]);
 //    color(a, "{-M}");
   gwfmt(a, "#%s", pp[b->pp_type]);
@@ -1254,11 +1269,6 @@ ANN static void gwfmt_stmt_pp(Gwfmt *a, const  Stmt_PP b) {
     gwfmt(a, s_name(b->xid));
     gwfmt_space(a);
     if(b->exp) gwfmt_exp(a, b->exp);
-  } else if (b->pp_type == ae_pp_include) {
-    if(a->ls->fmt) {
-      color(a,  a->ls->config->colors[StringColor]);
-      gwfmt(a, "<%s>", b->data);
-    }
   } else if(b->data)
      gwfmt(a, b->data);
   reset_color(a);
